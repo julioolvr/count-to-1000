@@ -49,11 +49,20 @@ function connectWebSocket(url) {
               face(message, ws)
             }
             else if (message.text && message.text.match(/^soto\:.*/)) {
-              combineFace(message, ws, 'soto')
+              combineFace(message.text.substring(message.text.indexOf(':') + 1), message, ws, 'soto')
+            }
+            else if (message.text && message.text.match(/^names?/)) {
+              names(message, ws)
             }
       }    
   });
 }
+
+ function names(message, ws) {
+    sendMessage(ws, message, 'Available names: ' + fs.readdirSync('./faces').map(function(name) {
+      return name.substring(0, name.indexOf('.'))
+    }).join(', '));
+ }
 
  function face(message, ws) {
     var searching = message.text.substring(message.text.indexOf(':') + 1);
@@ -87,8 +96,7 @@ function connectWebSocket(url) {
         console.log("Uploading new image " + outputFileName + " ...");
         slack.uploadFile({
             file: fs.createReadStream(path.join(__dirname, '.', outputFileName)),
-            filetype: 'post',
-            title: fileName,
+            title: outputFileName,
             initialComment: "Face for " + message.text,
             channels: message.channel
         }, function(err) {
@@ -143,16 +151,18 @@ function connectWebSocket(url) {
         
     var FACE_FACTOR = 1.2;
     var OFFSET_FACTOR = 1 - 0.2;
+    var roiX = Math.round(face.x * OFFSET_FACTOR);
+    var roiy = Math.round(face.y * OFFSET_FACTOR);
     var roiWidth = Math.round(face.width * FACE_FACTOR);
     var roiHeight = Math.round(face.height * FACE_FACTOR);
 
     var layer = new cv.Matrix(im.height(), im.width());
     console.log("Creating roi in sotoLayer...");
-    var faceRoi = im.roi(face.x, face.y, face.width, face.height);   
+    var faceRoi = im.roi(face.x, face.y, roiWidth, roiHeight);   
     console.log("Copying soto..");
     var copyOfSoto = soto.copy();
     console.log("Resizing soto..");
-    copyOfSoto.resize(face.width, face.height);
+    copyOfSoto.resize(roiWidth, roiHeight);
     console.log("Cloning soto into image roi..");
     
     copyOfSoto.copyTo(faceRoi);
@@ -169,21 +179,21 @@ function connectWebSocket(url) {
  }
 
  function gimage(message, ws) {
-    findImages(message, ws, filterOne)
+    findAndSendImages(message, ws, filterOne)
  }
 
  function gimages(message, ws) {
-    findImages(message, ws, filterNone)
+    findAndSendImages(message, ws, filterNone)
  }
 
  function filterOne(images) { return [images[Math.floor(Math.random()*images.length)]] }
  function filterNone(images) { return images }
 
  function findAndSendImages(message, ws, filtering) {
-    var searching = text.substring(message.text.indexOf(':') + 1);
+    var searching = message.text.substring(message.text.indexOf(':') + 1);
     findImages(searching, function(images) {
       filtering(images).forEach(function(image) {
-          sendImage(ws, message, image.url)
+          sendMessage(ws, message, image.url)
         }
       )
     })
