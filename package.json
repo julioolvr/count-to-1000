@@ -9,6 +9,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "google-images": "^0.1.0",
+    "node-slack-upload": "^1.0.3",
+    "node-uuid": "^1.4.3",
+    "opencv": "^3.0.0",
     "request": "^2.57.0",
     "ws": "^0.7.2"
   }
