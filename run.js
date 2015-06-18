@@ -146,9 +146,9 @@ function connectWebSocket(url) {
     var roiWidth = Math.round(face.width * FACE_FACTOR);
     var roiHeight = Math.round(face.height * FACE_FACTOR);
 
-    var layer = new cv.Matrix(im.height(), im.width(), cv.Constants.CV_8UC1);
+    var layer = new cv.Matrix(im.height(), im.width());
     console.log("Creating roi in sotoLayer...");
-    var faceRoi = layer.roi(face.x, face.y, face.width, face.height);   
+    var faceRoi = im.roi(face.x, face.y, face.width, face.height);   
     console.log("Copying soto..");
     var copyOfSoto = soto.copy();
     console.log("Resizing soto..");
@@ -157,7 +157,7 @@ function connectWebSocket(url) {
     
     copyOfSoto.copyTo(faceRoi);
 
-    layer.copyWithMask(im, new cv.Matrix(im.height(), im.width(), cv.Constants.CV_8UC1));
+    // layer.copyWithMask(im, new cv.Matrix(im.height(), im.width(), cv.Constants.CV_8UC1));
 
     // console.log("Merging layers (" + im.width() + "," +im.height() + ") + (" + layer.width() + "," + layer.height() + ")");
     // var result = new cv.Matrix(im.height(), im.width());
