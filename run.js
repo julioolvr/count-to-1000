@@ -5,6 +5,7 @@ var Slack = require('node-slack-upload');
 fs = require('fs');
 path = require('path');
 var uuid = require('node-uuid');
+var nodeImages = require("images");
 
 
 var WebSocket = require('ws'),
@@ -87,6 +88,7 @@ function connectWebSocket(url) {
  }
 
  function cutFaceAndSend(guy, image, message, ws) {
+    console.log("Processing image " + image.url + " for " + guy);
     var fileExtension = image.url.substring(image.url.lastIndexOf('.') + 1);
     var fileName = "./tmp/" + uuid.v4() + (fileExtension.length > 4 ? "" : ("." + fileExtension));
 
@@ -115,8 +117,7 @@ function connectWebSocket(url) {
     })
  }
  function addCircleToFace(guy, fileName, andThen) {
-    cv.readImage(fileName, function(err, im){
-      cv.readImage("./faces/" + guy + ".png", function(err, soto) {
+    cv.readImage(fileName, function(err, im) {
         console.log("Manipulating images ...");
 
         im.detectObject(cv.FACE_CASCADE, {}, function(err, faces) {
@@ -124,58 +125,22 @@ function connectWebSocket(url) {
             console.log("Error detecting faces: " + err);
             throw err;
           }
+          var ima = nodeImages(fileName);
+          var faceImage = nodeImages("./faces/" + guy + ".png");
+
           var processingIm = im;
           for (var i=0;i < faces.length; i++) {
-            var face = faces[i];
-            processingIm = processFace(i, im, face, soto);
+            var face = faces[i];            
+            ima.draw(faceImage.size(face.width * 1.1, face.height * 1.1), face.x *0.95, face.y * 0.95)
           }
 
           var outputFileName = fileName.substring(0, fileName.lastIndexOf('.')) + "-out" + fileName.substring(fileName.lastIndexOf('.'));
           console.log("Saving temporary image " + outputFileName + "...");
-          processingIm.save(outputFileName);
+
+          ima.save(outputFileName)
           andThen(outputFileName);
         });
-    
-      });
     })
- }
-
- function processFace(i, im, face, soto) {
-    console.log("Processing face " + i + " at ("
-        + face.x 
-        + "," + face.y
-        + "," + face.width
-        + "," + face.height + ")...");
-
-    console.log("Creating soto-layer...");
-        
-    var FACE_FACTOR = 1.2;
-    var OFFSET_FACTOR = 1 - 0.2;
-    var roiX = Math.round(face.x * OFFSET_FACTOR);
-    var roiy = Math.round(face.y * OFFSET_FACTOR);
-    var roiWidth = Math.round(face.width * FACE_FACTOR);
-    var roiHeight = Math.round(face.height * FACE_FACTOR);
-
-    var layer = new cv.Matrix(im.height(), im.width());
-    console.log("Creating roi in sotoLayer...");
-    var faceRoi = im.roi(face.x, face.y, roiWidth, roiHeight);   
-    console.log("Copying soto..");
-    var copyOfSoto = soto.copy();
-    console.log("Resizing soto..");
-    copyOfSoto.resize(roiWidth, roiHeight);
-    console.log("Cloning soto into image roi..");
-    
-    copyOfSoto.copyTo(faceRoi);
-
-    // layer.copyWithMask(im, new cv.Matrix(im.height(), im.width(), cv.Constants.CV_8UC1));
-
-    // console.log("Merging layers (" + im.width() + "," +im.height() + ") + (" + layer.width() + "," + layer.height() + ")");
-    // var result = new cv.Matrix(im.height(), im.width());
-    // console.log("into (" + result.width() + "," + result.height() + ")");
-    // var a = result.addWeighted(im, 1.0, layer, 1.0);
-    // return result;
-
-    return im;
  }
 
  function gimage(message, ws) {

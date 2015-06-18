@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "google-images": "^0.1.0",
+    "images": "^2.1.6",
     "node-slack-upload": "^1.0.3",
     "node-uuid": "^1.4.3",
     "opencv": "^3.0.0",
