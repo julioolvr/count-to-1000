@@ -9,10 +9,10 @@ var nodeImages = require("images");
 
 
 var WebSocket = require('ws'),
-    apiToken = "", //Api Token from https://api.slack.com/web (Authentication section)
+    apiToken = "xoxp-2946387922-3415127354-6482117463-7484d4", //Api Token from https://api.slack.com/web (Authentication section)
     authUrl = "https://slack.com/api/rtm.start?token=" + apiToken,
     request = require("request"),
-    userId = ''; // Id for the user the bot is posting as
+    userId = 'U03C73RAE'; // Id for the user the bot is posting as
 
 var slack = new Slack(apiToken);
 
@@ -67,18 +67,16 @@ function connectWebSocket(url) {
 
  function face(message, ws) {
     var searching = message.text.substring(message.text.indexOf(':') + 1);
+    var guy = "soto"
     if (searching.indexOf('+') > 0) {
       guy = searching.substring(0, searching.indexOf('+'))
       searching = searching.substring(searching.indexOf('+') + 1)
-    }
-    else {
-      guy = "soto"
     }
     combineFace(searching, message, ws, guy);
  }
 
  function combineFace(searching, message, ws, guy) {
-    console.log("combining face for " + guy);
+    console.log("Combining face for " + guy);
     findImages(searching, function(images) {
       filterOne(images).forEach(function (image) {
           cutFaceAndSend(guy, image, message, ws)
@@ -89,33 +87,42 @@ function connectWebSocket(url) {
 
  function cutFaceAndSend(guy, image, message, ws) {
     console.log("Processing image " + image.url + " for " + guy);
-    var fileExtension = image.url.substring(image.url.lastIndexOf('.') + 1);
-    var fileName = "./tmp/" + uuid.v4() + (fileExtension.length > 4 ? "" : ("." + fileExtension));
+    var fileName = computeTemporaryImageFileName(image)
 
     console.log("Writing image to " + fileName);
     image.writeTo(fileName, function() {
       addCircleToFace(guy, fileName, function(outputFileName) {
-        console.log("Uploading new image " + outputFileName + " ...");
-        slack.uploadFile({
-            file: fs.createReadStream(path.join(__dirname, '.', outputFileName)),
-            title: outputFileName,
-            initialComment: "Face for " + message.text,
-            channels: message.channel
-        }, function(err) {
-            if (err) {
-                console.error(err);
-            }
-            else {
-                console.log('done');
-            }
-            console.log("Deleting temporary images..");
-            // fs.unlinkSync(fileName);
-            // fs.unlinkSync(outputFileName);
-        });
-
+        upload(outputFileName, message, ws)
       })
     })
  }
+
+ function computeTemporaryImageFileName(image) {
+    var fileExtension = image.url.substring(image.url.lastIndexOf('.') + 1);
+    return "./tmp/" + uuid.v4() + (fileExtension.length > 4 ? ".tmp" : ("." + fileExtension));
+ }
+
+ function upload(outputFileName, message, ws) {
+    console.log("Uploading new image " + outputFileName + " ...");
+  
+    slack.uploadFile({
+        file: fs.createReadStream(path.join(__dirname, '.', outputFileName)),
+        title: outputFileName,
+        initialComment: "Phothoshoped <" + message.text + ">",
+        channels: message.channel
+    }, function(err) {
+        if (err) {
+            console.error(err);
+        }
+        else {
+            console.log('done');
+        }
+        console.log("Deleting temporary images..");
+        // fs.unlinkSync(fileName);
+        // fs.unlinkSync(outputFileName);
+    });
+ }
+
  function addCircleToFace(guy, fileName, andThen) {
     cv.readImage(fileName, function(err, im) {
         console.log("Manipulating images ...");
@@ -128,11 +135,11 @@ function connectWebSocket(url) {
           var ima = nodeImages(fileName);
           var faceImage = nodeImages("./faces/" + guy + ".png");
 
-          var processingIm = im;
-          for (var i=0;i < faces.length; i++) {
-            var face = faces[i];            
-            ima.draw(faceImage.size(face.width * 1.1, face.height * 1.1), face.x *0.95, face.y * 0.95)
-          }
+          var resizeFactor = 0.1
+          faces.forEach(function(face) {
+            var resized = faceImage.size(face.width * (1 + resizeFactor), face.height * (1+resizeFactor))
+            ima.draw(resized, face.x - (face.width*resizeFactor/2), face.y - (face.width*resizeFactor/2))
+          })
 
           var outputFileName = fileName.substring(0, fileName.lastIndexOf('.')) + "-out" + fileName.substring(fileName.lastIndexOf('.'));
           console.log("Saving temporary image " + outputFileName + "...");
