@@ -6,13 +6,15 @@ fs = require('fs');
 path = require('path');
 var uuid = require('node-uuid');
 var nodeImages = require("images");
+var http = require('http');
+var https = require('https');
 
 
 var WebSocket = require('ws'),
-    apiToken = "xoxp-2946387922-3415127354-6482117463-7484d4", //Api Token from https://api.slack.com/web (Authentication section)
+    apiToken = "", //Api Token from https://api.slack.com/web (Authentication section)
     authUrl = "https://slack.com/api/rtm.start?token=" + apiToken,
     request = require("request"),
-    userId = 'U03C73RAE'; // Id for the user the bot is posting as
+    userId = ''; // Id for the user the bot is posting as
 
 var slack = new Slack(apiToken);
 
@@ -33,40 +35,120 @@ function connectWebSocket(url) {
   });
 
   ws.on('message', function(message) {
-      console.log('received:', message);
+      console.log('Received: ', message);
       message = JSON.parse(message);
 
-      if (message.type === 'message') {
-          var number = Number(message.text);
+      if (isFaceUpload(message)) {
+          controller.uploadFace(message, ws)
+      }
 
-          // TODO: hacerlo dinamico que resuelva por el nombre del comando una function del módulo
-            if (message.text && message.text.match(/^gimage\:.*/)) {
-              gimage(message, ws)
-            }
-            else if (message.text && message.text.match(/^gimages\:.*/)) {
-              gimages(message, ws)
-            }
-            else if (message.text && message.text.match(/^face\:.*/)) {
-              face(message, ws)
-            }
-            else if (message.text && message.text.match(/^soto\:.*/)) {
-              combineFace(message.text.substring(message.text.indexOf(':') + 1), message, ws, 'soto')
-            }
-            else if (message.text && message.text.match(/^names?/)) {
-              names(message, ws)
-            }
+      if (message.type === 'message') {
+
+        // command : param 
+        var args = /(\w*)\s*\:(.*)/.exec(message.text)
+        if (args) {
+          console.log("ARGS -> " + args)
+          var commandName = args[1].trim()
+          var handler = controller[commandName]
+          if (handler)
+            handler(message, ws, args[2].trim())
+        }
+        else {
+          // command (?)
+          var handler = controller[message.text.trim().replace(/\?/,'')]
+          if (handler) {
+            handler(message, ws)
+          }
+          // else {
+            // sendMessage(ws, message, "Ups, no entiendo '" + message.text + "'")
+          // }
+        }
       }    
   });
 }
 
+var uploadRegExp = /^uploadFace\:.*/
+
+function isFaceUpload(message) {
+  return message.type === "file_created" && message.file.title.match(uploadRegExp)
+}
+
+Controller = function() {
+  this.uploadFace = function(message, ws) {
+    var guyName = message.file.title.substring(message.file.title.indexOf(':') + 1)
+    console.log("uploading guyName: " + guyName)
+
+    var extension = message.file.permalink_public.substring(message.file.permalink_public.lastIndexOf('.') + 1)
+    var image = downloadImage(message.file.permalink_public, "./faces/" + guyName + extension, function() {
+      sendDirectMessage(ws, message.file.user, "@bot: Gracias capo ! Ya podes usar la cara de " + guyName)
+    })
+  }
+
+  this.hola = function(message, ws) {
+    sendMessage(ws, message, "@bot: Hola che !")
+  }
+
+  this.chau = function(message, ws) {
+    sendMessage(ws, message, "@bot: Chau che !")
+  }
+
+  this.gimage = function(message, ws) {
+    gimage(message, ws)
+  }
+
+  this.gimages = function(message, ws) {
+    gimages(message, ws)
+  }
+
+  this.face = function(message, ws, texto) {
+    face(message, ws, texto)
+  }
+
+  this.combine = function(message, ws) {
+    combineWith(message.text.substring(message.text.indexOf(':') + 1), message, ws)
+  }
+
+  this.names = function(message, ws) {
+    names(message, ws)
+  }
+
+}
+var controller = new Controller()
+
+
+ function combineWith(searching, message, ws) {
+    guy = searching.substring(0, searching.indexOf('+'))
+    imageUrl = searching.substring(searching.indexOf('+') + 2, searching.length - 1)
+
+    var localFile = computeTemporaryImageFileName(imageUrl)
+    downloadImage(imageUrl, localFile, function() {
+      addCircleToFace(guy, localFile, function() {faceNotFound(ws, message)}, function(outputFileName) {
+        upload(outputFileName, message, ws)
+      })
+    })
+ }
+
+ function faceNotFound(ws, message) {
+    sendMessage(ws, message, "@bot: No encontré una imagen con cara :(")
+ }
+
+ function downloadImage(url, fileName, then) {
+  console.log('Downloading ' + url + " to file" + fileName)
+  var file = fs.createWriteStream(fileName);
+  var client = url.match(/^https.*/) ? https : http
+  var request = client.get(url, function(response) {
+    response.pipe(file);
+    response.on('end', then);
+  });
+ }
+
  function names(message, ws) {
-    sendMessage(ws, message, 'Available names: ' + fs.readdirSync('./faces').map(function(name) {
+    sendMessage(ws, message, '@bot: Me banco a: ' + fs.readdirSync('./faces').map(function(name) {
       return name.substring(0, name.indexOf('.'))
     }).join(', '));
  }
 
- function face(message, ws) {
-    var searching = message.text.substring(message.text.indexOf(':') + 1);
+ function face(message, ws, searching) {
     var guy = "soto"
     if (searching.indexOf('+') > 0) {
       guy = searching.substring(0, searching.indexOf('+'))
@@ -77,28 +159,36 @@ function connectWebSocket(url) {
 
  function combineFace(searching, message, ws, guy) {
     console.log("Combining face for " + guy);
-    findImages(searching, function(images) {
-      filterOne(images).forEach(function (image) {
-          cutFaceAndSend(guy, image, message, ws)
+    findImages(searching, function(images) {  
+      var i = 0;
+      var next = function() {
+        i++
+        if (images.length > i) {
+          console.log("Trying next image " + i);
+          cutFaceAndSend(guy, images[i], message, ws, next)
         }
-      )
+        else
+          sendMessage(ws, message, "@bot: No encontré una imagen con cara para bardear a '" + guy + "' con '" + searching + "'")
+      }
+
+      cutFaceAndSend(guy, images[i], message, ws, next);
     })
  }
 
- function cutFaceAndSend(guy, image, message, ws) {
+ function cutFaceAndSend(guy, image, message, ws, nextIfNoFace) {
     console.log("Processing image " + image.url + " for " + guy);
-    var fileName = computeTemporaryImageFileName(image)
+    var fileName = computeTemporaryImageFileName(image.url)
 
     console.log("Writing image to " + fileName);
     image.writeTo(fileName, function() {
-      addCircleToFace(guy, fileName, function(outputFileName) {
+      addCircleToFace(guy, fileName, nextIfNoFace, function(outputFileName) {
         upload(outputFileName, message, ws)
       })
     })
  }
 
- function computeTemporaryImageFileName(image) {
-    var fileExtension = image.url.substring(image.url.lastIndexOf('.') + 1);
+ function computeTemporaryImageFileName(imageUrl) {
+    var fileExtension = imageUrl.substring(imageUrl.lastIndexOf('.') + 1);
     return "./tmp/" + uuid.v4() + (fileExtension.length > 4 ? ".tmp" : ("." + fileExtension));
  }
 
@@ -108,7 +198,7 @@ function connectWebSocket(url) {
     slack.uploadFile({
         file: fs.createReadStream(path.join(__dirname, '.', outputFileName)),
         title: outputFileName,
-        initialComment: "Phothoshoped <" + message.text + ">",
+        initialComment: "@bot: Phothoshoped <" + message.text + ">",
         channels: message.channel
     }, function(err) {
         if (err) {
@@ -123,31 +213,45 @@ function connectWebSocket(url) {
     });
  }
 
- function addCircleToFace(guy, fileName, andThen) {
-    cv.readImage(fileName, function(err, im) {
-        console.log("Manipulating images ...");
+ function addCircleToFace(guy, fileName, nextIfNoFace, andThen) {
+      cv.readImage(fileName, function(err, im) {
+          console.log("Manipulating images " + fileName + " for " + guy);
 
-        im.detectObject(cv.FACE_CASCADE, {}, function(err, faces) {
-          if (err) {
-            console.log("Error detecting faces: " + err);
-            throw err;
+          try {
+            im.detectObject(cv.FACE_CASCADE, {}, function(err, faces) {
+              if (err) {
+                nextIfNoFace()
+              }
+              if (faces.length == 0) {
+                nextIfNoFace()
+              }
+              else {
+                processFaces(guy, fileName, faces, andThen)
+              }
+            });
           }
-          var ima = nodeImages(fileName);
-          var faceImage = nodeImages("./faces/" + guy + ".png");
+          catch (error) {
+            console.log("Error manipulating image " + fileName);
+            nextIfNoFace()
+          }
+      })
+ }
 
-          var resizeFactor = 0.1
-          faces.forEach(function(face) {
-            var resized = faceImage.size(face.width * (1 + resizeFactor), face.height * (1+resizeFactor))
-            ima.draw(resized, face.x - (face.width*resizeFactor/2), face.y - (face.width*resizeFactor/2))
-          })
+ function processFaces(guy, fileName, faces, andThen) {
+    var ima = nodeImages(fileName);
+    var faceImage = nodeImages("./faces/" + guy + ".png");
 
-          var outputFileName = fileName.substring(0, fileName.lastIndexOf('.')) + "-out" + fileName.substring(fileName.lastIndexOf('.'));
-          console.log("Saving temporary image " + outputFileName + "...");
-
-          ima.save(outputFileName)
-          andThen(outputFileName);
-        });
+    var resizeFactor = 0.1
+    faces.forEach(function(face) {
+      var resized = faceImage.size(face.width * (1 + resizeFactor), face.height * (1+resizeFactor))
+      ima.draw(resized, face.x - (face.width*resizeFactor/2), face.y - (face.width*resizeFactor/2))
     })
+
+    var outputFileName = fileName.substring(0, fileName.lastIndexOf('.')) + "-out" + fileName.substring(fileName.lastIndexOf('.'));
+    console.log("Saving temporary image " + outputFileName + "...");
+
+    ima.save(outputFileName)
+    andThen(outputFileName);
  }
 
  function gimage(message, ws) {
@@ -174,16 +278,26 @@ function connectWebSocket(url) {
  function sendMessage(ws, message, text) {
     ws.send(JSON.stringify({ 
         channel: message.channel, 
-        id: 1, 
+        id: 1,
+        text: text,
+        type: "message",
+        reply_to : message.id
+    }));
+ }
+
+ function sendDirectMessage(ws, to, text) {
+    ws.send(JSON.stringify({ 
+        channel: to, 
+        id: 1,
         text: text,
         type: "message"
     }));
  }
 
  function findImages(searching, command) {
-    console.log('searching image for :', searching);
+    console.log('Searching image for :', searching);
     imageClient.search({ 'for': searching, callback : function(err, images) {
-        console.log('Found images: ', + JSON.stringify(images));
+        console.log('Found ' + images.length + ' images');
         command(images)
     }})
  }
