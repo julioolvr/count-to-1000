@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/javierfernandes/slack-photobot.svg?branch=master)](https://travis-ci.org/javierfernandes/slack-photobot)
+
 # Slack PhotoBot
 
 A slack bot client that supports a number of messages for automatically creating a "photoshopped" image. 
