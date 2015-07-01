@@ -9,12 +9,13 @@ var nodeImages = require("images");
 var http = require('http');
 var https = require('https');
 
+var pbotConfig = JSON.parse(fs.readFileSync('./pbot.json', 'utf8'));
 
 var WebSocket = require('ws'),
-    apiToken = "", //Api Token from https://api.slack.com/web (Authentication section)
+    apiToken = process.env.PBOT_APITOKEN || pbotConfig.apiToken,
     authUrl = "https://slack.com/api/rtm.start?token=" + apiToken,
     request = require("request"),
-    userId = ''; // Id for the user the bot is posting as
+    userId = process.env.PBOT_USER_ID || pbotConfig.userId;
 
 var slack = new Slack(apiToken);
 
