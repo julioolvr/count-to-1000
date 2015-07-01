@@ -53,7 +53,7 @@ function connectWebSocket(url) {
           if (handler)
             handler(message, ws, args[2].trim())
         }
-        else {
+        else if (message.text) {
           // command (?)
           var handler = controller[message.text.trim().replace(/\?/,'')]
           if (handler) {
@@ -70,7 +70,8 @@ function connectWebSocket(url) {
 var uploadRegExp = /^uploadFace\:.*/
 
 function isFaceUpload(message) {
-  return message.type === "file_created" && message.file.title.match(uploadRegExp)
+  return (message.type === "file_created" ||
+          message.type === "file_shared" ) && message.file.title.match(uploadRegExp)
 }
 
 Controller = function() {
@@ -105,7 +106,7 @@ Controller = function() {
   }
 
   this.combine = function(message, ws) {
-    combineWith(message.text.substring(message.text.indexOf(':') + 1), message, ws)
+    combineWith(message.text.substring(message.text.indexOf(':') + 1).trim(), message, ws)
   }
 
   this.names = function(message, ws) {
@@ -117,12 +118,12 @@ var controller = new Controller()
 
 
  function combineWith(searching, message, ws) {
-    guy = searching.substring(0, searching.indexOf('+'))
+    guys = searching.substring(0, searching.indexOf('+')).split('\&amp;')
     imageUrl = searching.substring(searching.indexOf('+') + 2, searching.length - 1)
 
     var localFile = computeTemporaryImageFileName(imageUrl)
     downloadImage(imageUrl, localFile, function() {
-      addCircleToFace(guy, localFile, function() {faceNotFound(ws, message)}, function(outputFileName) {
+      addCircleToFace(guys, localFile, function() {faceNotFound(ws, message)}, function(outputFileName) {
         upload(outputFileName, message, ws)
       })
     })
@@ -149,39 +150,39 @@ var controller = new Controller()
  }
 
  function face(message, ws, searching) {
-    var guy = "soto"
+    var guys = ["soto"]
     if (searching.indexOf('+') > 0) {
-      guy = searching.substring(0, searching.indexOf('+'))
+      guys = searching.substring(0, searching.indexOf('+')).split('\&amp;')
       searching = searching.substring(searching.indexOf('+') + 1)
     }
-    combineFace(searching, message, ws, guy);
+    combineFace(searching, message, ws, guys);
  }
 
- function combineFace(searching, message, ws, guy) {
-    console.log("Combining face for " + guy);
+ function combineFace(searching, message, ws, guys) {
+    console.log("Combining face for " + guys);
     findImages(searching, function(images) {  
       var i = 0;
       var next = function() {
         i++
         if (images.length > i) {
           console.log("Trying next image " + i);
-          cutFaceAndSend(guy, images[i], message, ws, next)
+          cutFaceAndSend(guys, images[i], message, ws, next)
         }
         else
-          sendMessage(ws, message, "@bot: No encontré una imagen con cara para bardear a '" + guy + "' con '" + searching + "'")
+          sendMessage(ws, message, "@bot: No encontré una imagen con cara para bardear a '" + guys + "' con '" + searching + "'")
       }
 
-      cutFaceAndSend(guy, images[i], message, ws, next);
+      cutFaceAndSend(guys, images[i], message, ws, next);
     })
  }
 
- function cutFaceAndSend(guy, image, message, ws, nextIfNoFace) {
-    console.log("Processing image " + image.url + " for " + guy);
+ function cutFaceAndSend(guys, image, message, ws, nextIfNoFace) {
+    console.log("Processing image " + image.url + " for " + guys);
     var fileName = computeTemporaryImageFileName(image.url)
 
     console.log("Writing image to " + fileName);
     image.writeTo(fileName, function() {
-      addCircleToFace(guy, fileName, nextIfNoFace, function(outputFileName) {
+      addCircleToFace(guys, fileName, nextIfNoFace, function(outputFileName) {
         upload(outputFileName, message, ws)
       })
     })
@@ -213,9 +214,9 @@ var controller = new Controller()
     });
  }
 
- function addCircleToFace(guy, fileName, nextIfNoFace, andThen) {
+ function addCircleToFace(guys, fileName, nextIfNoFace, andThen) {
       cv.readImage(fileName, function(err, im) {
-          console.log("Manipulating images " + fileName + " for " + guy);
+          console.log("Manipulating images " + fileName + " for " + guys);
 
           try {
             im.detectObject(cv.FACE_CASCADE, {}, function(err, faces) {
@@ -226,7 +227,7 @@ var controller = new Controller()
                 nextIfNoFace()
               }
               else {
-                processFaces(guy, fileName, faces, andThen)
+                processFaces(guys, fileName, faces, andThen)
               }
             });
           }
@@ -237,12 +238,15 @@ var controller = new Controller()
       })
  }
 
- function processFaces(guy, fileName, faces, andThen) {
+ function processFaces(guys, fileName, faces, andThen) {
     var ima = nodeImages(fileName);
-    var faceImage = nodeImages("./faces/" + guy + ".png");
+    var faceImages = guys.map(function(guy) { return nodeImages("./faces/" + guy + ".png") });
 
     var resizeFactor = 0.1
+    var i = 0;
     faces.forEach(function(face) {
+      i = i % guys.length
+      var faceImage = faceImages[i++];
       var resized = faceImage.size(face.width * (1 + resizeFactor), face.height * (1+resizeFactor))
       ima.draw(resized, face.x - (face.width*resizeFactor/2), face.y - (face.width*resizeFactor/2))
     })
