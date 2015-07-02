@@ -15,5 +15,6 @@ deploy:
   app: photobot-scv
   on:
     repo: javierfernandes/slack-photobot
+    node: '0.10'
   run:
     - "./start.sh"
