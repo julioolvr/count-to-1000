@@ -221,7 +221,7 @@ var controller = new Controller()
  }
 
  function uploadImageHosting(outputFileName, message, ws) {
-    var fileName = outputFileName.substring(outputFileName.indexOf('/') + 1)
+    var fileName = outputFileName.substring(outputFileName.lastIndexOf('/') + 1)
     sendMessage(ws, message, "http://54.172.235.151/bot/" + fileName)
  }
 
