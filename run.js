@@ -185,8 +185,15 @@ var controller = new Controller()
     image.writeTo(fileName, function() {
       addCircleToFace(guys, fileName, nextIfNoFace, function(outputFileName) {
         upload(outputFileName, message, ws)
+        deleteFile(fileName)
+        deleteFile(outputFileName)
       })
     })
+ }
+
+ function deleteFile(fileName) {
+  console.log("Deleting file " + fileName)
+//  fs.unlinkSync(fileName);
  }
 
  function computeTemporaryImageFileName(imageUrl) {
@@ -196,23 +203,26 @@ var controller = new Controller()
 
  function upload(outputFileName, message, ws) {
     console.log("Uploading new image " + outputFileName + " ...");
-  
-    slack.uploadFile({
-        file: fs.createReadStream(path.join(__dirname, '.', outputFileName)),
-        title: outputFileName,
-        initialComment: "@bot: Phothoshoped <" + message.text + ">",
-        channels: message.channel
-    }, function(err) {
-        if (err) {
-            console.error(err);
-        }
-        else {
-            console.log('done');
-        }
-        console.log("Deleting temporary images..");
-        // fs.unlinkSync(fileName);
-        // fs.unlinkSync(outputFileName);
-    });
+
+    uploadImageHosting(outputFileName, message, ws)  
+    // slack.uploadFile({
+    //     file: fs.createReadStream(path.join(__dirname, '.', outputFileName)),
+    //     title: outputFileName,
+    //     initialComment: "@bot: Phothoshoped <" + message.text + ">",
+    //     channels: message.channel
+    // }, function(err) {
+    //     if (err) {
+    //         console.error(err);
+    //     }
+    //     else {
+    //         console.log('done');
+    //     }
+    // });
+ }
+
+ function uploadImageHosting(outputFileName, message, ws) {
+    var fileName = outputFileName.substring(outputFileName.indexOf('/') + 1)
+    sendMessage(ws, message, "http://54.172.235.151/bot/" + fileName)
  }
 
  function addCircleToFace(guys, fileName, nextIfNoFace, andThen) {
