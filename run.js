@@ -114,6 +114,11 @@ Controller = function() {
     names(message, ws)
   }
 
+
+  this.caras = function(message, ws) {
+    caras(message, ws)
+  }
+
 }
 var controller = new Controller()
 
@@ -148,6 +153,26 @@ var controller = new Controller()
     sendMessage(ws, message, '@bot: Me banco a: ' + fs.readdirSync('./faces').map(function(name) {
       return name.substring(0, name.indexOf('.'))
     }).join(', '));
+ }
+
+ function caras(message, ws) {
+    var faces = fs.readdirSync('./faces').map(function (i) { return nodeImages('./faces/' + i) })
+    faces.forEach(function(f) { f.resize(80) })
+    
+    var height = faces.reduce(function(acc, i) {return acc > i.height() ? acc : i.height() }, 0)
+    var width = faces.reduce(function(acc, i) { return acc + i.width() }, 0)
+
+    var image = nodeImages(width, height)
+    var x = 0;
+    faces.forEach(function(face) {
+      image.draw(face, x, (height - face.height())/2)
+      x += face.width()
+    })
+
+    var name = uuid.v4() + ".png"
+    image.save("./tmp/" + name )
+
+    sendMessage(ws, message, 'Caras: ' + 'http://54.172.235.151/bot/' + name);
  }
 
  function face(message, ws, searching) {
