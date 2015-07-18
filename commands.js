@@ -71,7 +71,7 @@ commands = {
             var name = "./tmp/" + uuid.v4() + ".png"
             image.save(name)
 
-            then(reply(true, 'Caras:', name));
+            then(reply(true, 'Caras: {link}', name));
         }
     },
     chau: {
