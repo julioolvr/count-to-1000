@@ -56,5 +56,11 @@ module.exports = {
     },
     parseUrl: function(url) {
         return url.replace(/\<(.*)\>/g, '$1')
+    },
+    parseGuys: function(guys) {
+        if (typeof guys === 'string') {
+            guys = guys.split("&").map(function (n) { return n.trim() })
+        }
+        return guys
     }
 }

@@ -8,4 +8,9 @@ describe("Functions utilities", function() {
     	expect(fn.parseUrl('<http://google.com.ar/images/sarasa.jpg>')).toEqual('http://google.com.ar/images/sarasa.jpg');
     });
 
+
+    it("parses guys when there is just one", function() {
+    	expect(fn.parseGuys('fafafa')).toEqual(['fafafa']);
+    });
+
 });

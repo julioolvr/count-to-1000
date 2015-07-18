@@ -3,13 +3,6 @@ var nodeImages = require("images");
 var fs = require("fs")
 var uuid = require('node-uuid')
 
-function parseGuys(guys) {
-    if (typeof guys === 'string') {
-        guys = guys.split("&").map(function (n) { n.trim() })
-    }
-    return guys
-}
-
 function processFaces(guys, fileName, faces, andThen) {
     var ima = nodeImages(fileName);
     var faceImages = guys.map(function(guy) { return nodeImages("./faces/" + guy + ".png") });
@@ -89,7 +82,7 @@ commands = {
             if (params.length < 2) {
                 params = ["soto"].concat(params)
             }
-            var guys = parseGuys(params[0])
+            var guys = fn.parseGuys(params[0])
             var imageUrl = fn.parseUrl(params[1])
             var imageName = params[(params.length > 2) ? 2 : 1]
             var localFile = fn.computeTemporaryImageFileName(imageUrl)
@@ -138,7 +131,7 @@ commands = {
             if (params.length < 2) {
                 params = ["soto"].concat(params)
             }
-            var guys = parseGuys(params[0])
+            var guys = fn.parseGuys(params[0])
             var imageName = params[1]
             console.log("Combining face for " + guys);
             fn.findImages(imageName, function(images) {
