@@ -5,7 +5,25 @@ var http = require('http');
 var https = require('https');
 imageClient = require('google-images');
 
-module.exports = {
+function availableFaceFiles() {
+    return fs.readdirSync('./faces')
+}
+
+var names = null
+
+fn = {
+    availableNames: function (faceFiles) {
+        if (names && !faceFiles) {
+            return names
+        }
+        if (!faceFiles) {
+            faceFiles = availableFaceFiles()
+        }
+        names = faceFiles.map(function(name) {
+			return name.substring(0, name.indexOf('.'))
+		})
+		return names
+    },
     computeTemporaryImageFileName: function(originalUrl) {
         var fileExtension = originalUrl.substring(originalUrl.lastIndexOf('.') + 1);
         return "./tmp/" + uuid.v4() + "." + (fileExtension.length > 4 ? "tmp" : fileExtension);
@@ -54,13 +72,39 @@ module.exports = {
             }
         })
     },
+    parseGuys: function(guys, names) {
+        if (typeof guys === 'string') {
+            var tmpGuys = guys.split("&").map(function (n) { return n.trim() })
+            var allNames = names || fn.availableNames()
+            guys = []
+            tmpGuys.forEach(function (guy) {
+                if (guy === "all") {
+                    guys = guys.concat(fn.randomize(allNames))
+                }
+                else if (guy === "random") {
+                    guys.push(fn.pickRandom(allNames))
+                }
+                else if (allNames.indexOf(guy) != -1) {
+                    guys.push(guy)
+                }
+            })
+        }
+        return guys
+    },
     parseUrl: function(url) {
         return url.replace(/\<(.*)\>/g, '$1')
     },
-    parseGuys: function(guys) {
-        if (typeof guys === 'string') {
-            guys = guys.split("&").map(function (n) { return n.trim() })
-        }
-        return guys
-    }
+    pickRandom: function(array) {
+        return array[Math.floor(Math.random() * array.length)]
+    },
+    randomize: function(array) {
+        var newArray = []
+        array.forEach(function (e) {
+            var pos = Math.floor(Math.random() * (newArray.length + 1))
+            newArray.splice(pos, 0, e)
+        })
+        return newArray
+    },
 }
+
+module.exports = fn
