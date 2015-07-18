@@ -86,7 +86,7 @@ function connectWebSocket(url) {
 function uploadAttachment(outputFileName, then) {
     console.log("Uploading new image " + outputFileName + " ...");
     var url
-    if (outputFileName.indexOf("http") == 0) {
+    if (outputFileName.indexOf("http") === 0) {
         url = outputFileName
     }
     else {

@@ -36,7 +36,7 @@ fn = {
             console.log("Detecting faces in " + fileName);
             if (!err) try {
                 im.detectObject(cv.FACE_CASCADE, {}, function(err, faces) {
-                    if (err || faces.length == 0) {
+                    if (err || faces.length === 0) {
                         withoutFaces()
                     }
                     else {
@@ -92,7 +92,7 @@ fn = {
         return guys
     },
     parseUrl: function(url) {
-        return url.replace(/\<(.*)\>/g, '$1')
+        return url.replace(/<(.*)>/g, '$1')
     },
     pickRandom: function(array) {
         return array[Math.floor(Math.random() * array.length)]
