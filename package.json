@@ -4,7 +4,7 @@
   "description": "Slack Photoshop Bot",
   "main": "run.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 0"
+    "test": "grunt test"
   },
   "author": "",
   "license": "ISC",
@@ -16,5 +16,9 @@
     "opencv": "^3.0.0",
     "request": "^2.57.0",
     "ws": "^0.7.2"
+  },
+  "devDependencies": {
+    "grunt": "~0.4.5",
+    "grunt-jasmine-node": "^0.3.1"
   }
 }

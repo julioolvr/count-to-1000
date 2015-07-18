@@ -90,7 +90,7 @@ commands = {
                 params = ["soto"].concat(params)
             }
             var guys = parseGuys(params[0])
-            var imageUrl = params[1]
+            var imageUrl = fn.parseUrl(params[1])
             var imageName = params[(params.length > 2) ? 2 : 1]
             var localFile = fn.computeTemporaryImageFileName(imageUrl)
             fn.downloadImage(imageUrl, localFile, function() {

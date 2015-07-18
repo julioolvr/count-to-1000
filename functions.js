@@ -53,5 +53,8 @@ module.exports = {
                 command(images)
             }
         })
+    },
+    parseUrl: function(url) {
+        return url.replace(/\<(.*)\>/g, '$1')
     }
 }
