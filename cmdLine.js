@@ -3,7 +3,7 @@
 var commands = require('./commands.js')
 var args = process.argv
 if (args.length < 3) {
-    console.log("ningún comando. Comandos válidos: " + Object.keys(bot.commands).join(", "))
+    console.log("ningún comando. Comandos válidos: " + Object.keys(commands).join(", "))
 }
 else {
     var commandName = args[2]

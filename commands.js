@@ -1,26 +1,30 @@
 var fn = require('./functions.js')
 var nodeImages = require("images");
-var fs = require("fs")
 var uuid = require('node-uuid')
 
 function processFaces(guys, fileName, faces, andThen) {
     var ima = nodeImages(fileName);
     var faceImages = guys.map(function(guy) { return nodeImages("./faces/" + guy + ".png") });
+    var usedGuys = []
 
     var resizeFactor = 0.1
     var i = 0;
     faces.forEach(function(face) {
         i = i % guys.length
-        var faceImage = faceImages[i++];
+        var faceImage = faceImages[i];
         var resized = faceImage.size(face.width * (1 + resizeFactor), face.height * (1+resizeFactor))
         ima.draw(resized, face.x - (face.width*resizeFactor/2), face.y - (face.width*resizeFactor/2))
+        if (usedGuys.indexOf(guys[i]) == -1) {
+            usedGuys.push(guys[i])
+        }
+        i++
     })
 
     var outputFileName = fileName.substring(0, fileName.lastIndexOf('.')) + "-out" + fileName.substring(fileName.lastIndexOf('.'));
     console.log("Saving temporary image " + outputFileName + "...");
 
     ima.save(outputFileName)
-    andThen(outputFileName);
+    andThen(outputFileName, usedGuys);
 }
 
 function findAndSendImages(params, then, filtering) {
@@ -80,7 +84,7 @@ commands = {
                 return
             }
             if (params.length < 2) {
-                params = ["soto"].concat(params)
+                params = ["all"].concat(params)
             }
             var guys = fn.parseGuys(params[0])
             var imageUrl = fn.parseUrl(params[1])
@@ -88,9 +92,9 @@ commands = {
             var localFile = fn.computeTemporaryImageFileName(imageUrl)
             fn.downloadImage(imageUrl, localFile, function() {
                 fn.detectFaces(localFile, function (faces) {
-                    processFaces(guys, localFile, faces, function(outputFileName) {
+                    processFaces(guys, localFile, faces, function(outputFileName, usedGuys) {
                         fn.deleteFile(localFile)
-                        then(reply(true, guys.join(", ") + " en " + imageName, outputFileName))
+                        then(reply(true, usedGuys.join(", ") + " en " + imageName, outputFileName))
                     })
                 }, function () {
                     fn.deleteFile(localFile)
@@ -116,10 +120,7 @@ commands = {
     },
     names: {
         execute: function (params, then) {
-            var names = fs.readdirSync('./faces').map(function(name) {
-                return name.substring(0, name.indexOf('.'))
-            }).join(', ')
-            then(reply(true, "Me banco a " + names, null))
+            then(reply(true, "Me banco a " + fn.availableNames().join(', '), null))
         }
     },
     searchAndCombine: {
@@ -129,12 +130,13 @@ commands = {
                 return
             }
             if (params.length < 2) {
-                params = ["soto"].concat(params)
+                params = ["all"].concat(params)
             }
             var guys = fn.parseGuys(params[0])
             var imageName = params[1]
             console.log("Combining face for " + guys);
             fn.findImages(imageName, function(images) {
+                images = fn.randomize(images)
                 var next = function(i) {
                     if (i == images.length) {
                         then(reply(false, "no hay caras para " + imageName, null))
