@@ -5,24 +5,39 @@ var http = require('http');
 var https = require('https');
 imageClient = require('google-images');
 
+var baseFacesPath = "./faces"
 function availableFaceFiles() {
-    return fs.readdirSync('./faces')
+    return fs.readdirSync(baseFacesPath)
 }
 
 var names = null
+var faces = null
 
 fn = {
-    availableNames: function (faceFiles) {
+    anyFaceForGuy: function (guy) {
+        return fn.pickRandom(faces[guy])
+    },
+    availableNames: function (faceFiles, basePath) {
         if (names && !faceFiles) {
             return names
         }
         if (!faceFiles) {
             faceFiles = availableFaceFiles()
         }
-        names = faceFiles.map(function(name) {
-			return name.substring(0, name.indexOf('.'))
-		})
-		return names
+        names = []
+        faces = []
+        faceFiles.forEach(function(filename) {
+            var name = filename.substring(0, filename.indexOf('.'))
+            filename = (basePath || baseFacesPath) + "/" + filename
+            if (names.indexOf(name) == -1) {
+                names.push(name)
+                faces[name] = [filename]
+            }
+            else {
+                faces[name].push(filename)
+            }
+        })
+        return names
     },
     computeTemporaryImageFileName: function(originalUrl) {
         var fileExtension = originalUrl.substring(originalUrl.lastIndexOf('.') + 1);
