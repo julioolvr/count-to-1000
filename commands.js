@@ -4,20 +4,18 @@ var uuid = require('node-uuid')
 
 function processFaces(guys, fileName, faces, andThen) {
     var ima = nodeImages(fileName);
-    var faceImages = guys.map(function(guy) { return nodeImages("./faces/" + guy + ".png") });
     var usedGuys = []
 
     var resizeFactor = 0.1
     var i = 0;
     faces.forEach(function(face) {
-        i = i % guys.length
-        var faceImage = faceImages[i];
+        var faceImage = nodeImages(fn.anyFaceForGuy(guys[i]))
         var resized = faceImage.size(face.width * (1 + resizeFactor), face.height * (1+resizeFactor))
         ima.draw(resized, face.x - (face.width*resizeFactor/2), face.y - (face.width*resizeFactor/2))
         if (usedGuys.indexOf(guys[i]) == -1) {
             usedGuys.push(guys[i])
         }
-        i++
+        i = ++i % guys.length
     })
 
     var outputFileName = fileName.substring(0, fileName.lastIndexOf('.')) + "-out" + fileName.substring(fileName.lastIndexOf('.'));
@@ -32,12 +30,12 @@ function findAndSendImages(params, then, filtering) {
         then(reply(false, "nada que buscar", null))
     }
     else {
-		var searching = params[0];
-		fn.findImages(searching, function(images) {
-			filtering(images).forEach(function(image) {
-				then(reply(true, null, image.url))
-			})
-		})
+        var searching = params[0];
+        fn.findImages(searching, function(images) {
+            filtering(images).forEach(function(image) {
+                then(reply(true, null, image.url))
+            })
+        })
     }
 }
 

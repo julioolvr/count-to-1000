@@ -31,4 +31,11 @@ describe("Functions utilities", function() {
         expect(guys.length).toEqual(1)
         expect(names).toContain(guys[0])
     });
+
+    it("parses repeated face for guy", function() {
+        var pepeFiles = ["pepe.png", "pepe.1.png", "pepe.otra.png"]
+        var files = pepeFiles.concat(["pipo.png", "popo.png"])
+        expect(fn.availableNames(files, ".")).toEqual(["pepe", "pipo", "popo"])
+        expect(pepeFiles).toContain(fn.anyFaceForGuy("pepe").substring(2))
+    })
 });
