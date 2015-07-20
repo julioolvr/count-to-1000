@@ -1,13 +1,5 @@
-require('./lib/jquery.facedetection.js');
-cv = require('opencv');
-imageClient = require('google-images');
 var Slack = require('node-slack-upload');
 fs = require('fs');
-path = require('path');
-var uuid = require('node-uuid');
-var nodeImages = require("images");
-var http = require('http');
-var https = require('https');
 var commands = require("./commands.js")
 
 var pbotConfig = JSON.parse(fs.readFileSync('./pbot.json', 'utf8'));
@@ -15,8 +7,7 @@ var pbotConfig = JSON.parse(fs.readFileSync('./pbot.json', 'utf8'));
 var WebSocket = require('ws'),
     apiToken = process.env.PBOT_APITOKEN || pbotConfig.apiToken,
     authUrl = "https://slack.com/api/rtm.start?token=" + apiToken,
-    request = require("request"),
-    userId = process.env.PBOT_USER_ID || pbotConfig.userId;
+    request = require("request");
 
 var slack = new Slack(apiToken);
 
@@ -61,6 +52,7 @@ function connectWebSocket(url) {
           command = commands[message.text.trim().replace(/\?/,'')]
         }
         if (command) {
+          sendStartTyping(ws, message)
           command.execute(commandArgs, function (response) {
             var text = "@bot: " + (response.text || "")
             if (response.attachment) {
@@ -115,10 +107,24 @@ function isFaceUpload(message) {
   }
 */
 
+var _nextId = 1
+function nextId() {
+	return _nextId++
+}
+
+function sendStartTyping(ws, message) {
+    ws.send(JSON.stringify({
+        channel: message.channel,
+        id: nextId(),
+        type: "typing",
+        reply_to : message.id
+    }));
+}
+
  function sendMessage(ws, message, text) {
     ws.send(JSON.stringify({ 
         channel: message.channel, 
-        id: 1,
+        id: nextId(),
         text: text,
         type: "message",
         reply_to : message.id
