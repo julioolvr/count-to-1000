@@ -1,14 +1,19 @@
 {
-  "name": "count-to-1000",
-  "version": "0.0.0",
-  "description": "",
-  "main": "test.js",
+  "name": "slack-photobot",
+  "version": "0.0.1",
+  "description": "Slack Photoshop Bot",
+  "main": "run.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 0"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "google-images": "^0.1.0",
+    "images": "^2.1.6",
+    "node-slack-upload": "^1.0.3",
+    "node-uuid": "^1.4.3",
+    "opencv": "^3.0.0",
     "request": "^2.57.0",
     "ws": "^0.7.2"
   }

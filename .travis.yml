@@ -1,0 +1,20 @@
+language: node_js
+
+node_js:
+- '0.10'
+
+before_install:
+- sudo add-apt-repository -y ppa:kubuntu-ppa/backports
+- sudo apt-get update
+- sudo apt-get install --force-yes libcv-dev libcvaux-dev libhighgui-dev libopencv-dev
+
+deploy:
+  provider: heroku
+  api_key:
+    secure: u0Ze3TGdpmIrYTAb2fIykZ9MTU0GIf0Tu9vEYlzvjgjtua88IA+0/pGMdp3SgQe8xOPDgMLriYmkn9aJ2iLi8VFBuoKXSiKumYPKvtGqjDpOUceH0I1i55cWU0zHdg5jmIZN4nQum/TodweNiQGKvnMATbHItwNsBzSzsKhXqUROLd8JzVieMvZt68N3jrMeVqW97bwTKfTwKg8FXk5wdRlmWhRGp7O0gmM2bkauns4VEHioDZSXGeFu53s+9FNO7jzLIPf9WRJwCq4XvnPPCkWFMDKRGEnjShZB8SgCIjg70176ly6dbWH0fVofA3akEPO4WpCjTsle+wTTDViOk63wWLQ8aVjwqfAx5uoGxDK16SxV6mNEn85CfSDfdLwltrZa/amZeQfYWFpNpvF8fZoFY1uU37baHVzUCx56yvDATKBYEsuUrnWpatVBv0CzfexM27/8+yA6y6qBqLVnEDMxphx84LnwWnMLRXj6JyZCuqo+KIc7+V7278pbqL8fQ0psFNt1uu6HhmMLljw9lwKwhvsBDituRa3A6z2v1OI8MvLkSONzQ5eI22tRdLcSWeK0gySxmFa85mTtsKCmkLRusBZzFjdYFeP3zdVxQEZj+DssAKZrKEx2SaeIrpLA2C1IlNYF3NDjxtjCu87gtxPW32QUe31dvabj7pRXAMY=
+  app: photobot-scv
+  on:
+    repo: javierfernandes/slack-photobot
+    node: '0.10'
+  run:
+    - "./start.sh"
