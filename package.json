@@ -13,7 +13,7 @@
     "images": "^2.1.6",
     "node-slack-upload": "^1.0.3",
     "node-uuid": "^1.4.3",
-    "opencv": "^3.0.0",
+    "opencv": "git://github.com/emanuelandrada/node-opencv#master",
     "request": "^2.57.0",
     "ws": "^0.7.2"
   },
