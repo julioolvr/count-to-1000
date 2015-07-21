@@ -5,6 +5,14 @@ var http = require('http');
 var https = require('https');
 imageClient = require('google-images');
 
+var htmlEntities = {
+    '&amp;': '&',
+    '&gt;': '>',
+    '&lt;': '<',
+    '&quot;': '"',
+    '&#39;': "'"
+}
+
 var baseFacesPath = "./faces"
 function availableFaceFiles() {
     return fs.readdirSync(baseFacesPath)
@@ -74,8 +82,8 @@ fn = {
         var client = url.match(/^https.*/) ? https : http
         var request = client.get(url, function(response) {
             response.pipe(file)
-            response.on('end', then)
-        })
+            response.on('end', function () { then(true) })
+        }).on('error', function () { then(false) })
     },
     findImages: function (searching, command) {
         console.log('Searching image for: ', searching);
@@ -85,6 +93,11 @@ fn = {
                 console.log('Found ' + images.length + ' images');
                 command(images)
             }
+        })
+    },
+    htmlDecode: function(text) {
+        return text.replace(/(&\w\w?\w?\w?\w?;|&#[0-9]{1,5};)/ig, function (match, capture) {
+            return (capture in htmlEntities) ? htmlEntities[capture] : capture.substr(1, 1) === "#" ? String.fromCharCode(parseInt(capture.substr(2), 10)) : capture
         })
     },
     parseGuys: function(guys, names) {
@@ -120,6 +133,9 @@ fn = {
         })
         return newArray
     },
+    splitSlackParams: function(line) {
+        return line.split("+").map(function (arg) { return fn.htmlDecode(arg) })
+    }
 }
 
 module.exports = fn

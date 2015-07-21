@@ -44,7 +44,7 @@ function connectWebSocket(url) {
         if (args) {
           console.log("ARGS -> " + args)
           var commandName = args[1].trim()
-          commandArgs = args[2].split("+")
+          commandArgs = fn.splitSlackParams(args[2])
           command = commands[commandName]
         }
         else if (message.text) {

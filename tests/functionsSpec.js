@@ -38,4 +38,8 @@ describe("Functions utilities", function() {
         expect(fn.availableNames(files, ".")).toEqual(["pepe", "pipo", "popo"])
         expect(pepeFiles).toContain(fn.anyFaceForGuy("pepe").substring(2))
     })
+
+    it("parses the arguments in slack", function() {
+        expect(fn.splitSlackParams("pepe&amp;pipi&amp;pipo+a search")).toEqual(["pepe&pipi&pipo", "a search"])
+    })
 });

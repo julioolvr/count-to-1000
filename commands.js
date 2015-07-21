@@ -88,16 +88,21 @@ commands = {
             var imageUrl = fn.parseUrl(params[1])
             var imageName = params[(params.length > 2) ? 2 : 1]
             var localFile = fn.computeTemporaryImageFileName(imageUrl)
-            fn.downloadImage(imageUrl, localFile, function() {
-                fn.detectFaces(localFile, function (faces) {
-                    processFaces(guys, localFile, faces, function(outputFileName, usedGuys) {
+            fn.downloadImage(imageUrl, localFile, function(success) {
+                if (success) {
+                    fn.detectFaces(localFile, function (faces) {
+                        processFaces(guys, localFile, faces, function(outputFileName, usedGuys) {
+                            fn.deleteFile(localFile)
+                            then(reply(true, usedGuys.join(", ") + " en " + imageName, outputFileName))
+                        })
+                    }, function () {
                         fn.deleteFile(localFile)
-                        then(reply(true, usedGuys.join(", ") + " en " + imageName, outputFileName))
+                        then(reply(false, "no hay caras en " + imageName, null))
                     })
-                }, function () {
-                    fn.deleteFile(localFile)
-                    then(reply(false, "no hay caras", null))
-                })
+                }
+                else {
+                    then(reply(false, imageUrl + " no es una url válida", null))
+                }
             })
         }
     },
