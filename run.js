@@ -6,6 +6,13 @@ var activeCommands = 0
 var resetWhenIdle = false
 commands.resetBot = {
     private: true,
+    help: {
+        description: "reinicia el bot",
+        params: ["pass"],
+        helpParams: {
+            pass: "la contraseña"
+        }
+    },
     execute: function(params, then) {
         if (params.length < 1) {
             then({ success: false, text: "Falta contraseña" })
@@ -19,6 +26,16 @@ commands.resetBot = {
         }
     }
 }
+
+commands.help.configure("uso command:[param1]+[param2]+...", function (commandName, description, params, command) {
+    var note = ""
+    if (command.private) {
+        note = " (solo mensaje privado)"
+    }
+    return "`" + commandName + "`: " + description + note + "\n" + params + "\n"
+}, function (paramName, description) {
+    return "        `" + paramName + "` " + description + "\n"
+})
 
 var pbotConfig = JSON.parse(fs.readFileSync('./pbot.json', 'utf8'));
 

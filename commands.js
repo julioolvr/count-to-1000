@@ -51,6 +51,9 @@ function reply(success, text, attachment) {
 
 commands = {
     caras: {
+        help: {
+            description: "devuelve una imagen con todas las caras."
+        },
         execute: function (params, then) {
             var faces = fs.readdirSync('./faces').map(function (i) { return nodeImages('./faces/' + i) })
             faces.forEach(function(f) { f.resize(80) })
@@ -72,11 +75,23 @@ commands = {
         }
     },
     chau: {
+        help: {
+            description: "te devuelve el saludo cuando te vas."
+        },
         execute: function (params, then) {
             then(reply(true, "Chau che!"))
         }
     },
     combine: {
+        help: {
+            description: "combina una url con las caras que encuentre.",
+            params: ["guys", "url", "imageName"],
+            helpParams: {
+                guys: "las caras a usar unidas por '&'. \"all\" usa todas mezcladas, \"random\" una aleatoria (opcional: por omisión \"all\")",
+                url: "la url de la imagen a usar",
+                imageName: "el nombre de la imagen (opcional: por omisión la url)"
+            }
+        },
         execute: function (params, then) {
             console.log("combine: " + params)
             if (params.length < 1) {
@@ -109,26 +124,83 @@ commands = {
         }
     },
     gimage: {
+        help: {
+            description: "busca una imagen y la devuelve.",
+            params: ["search"],
+            helpParams: {
+                search: "la búsqueda"
+            }
+        },
         execute: function (params, then) {
             findAndSendImages(params, then, function (images) { return [images[Math.floor(Math.random()*images.length)]] })
         }
     },
     gimages: {
+        help: {
+            description: "busca imágenes y las devuelve.",
+            params: ["search"],
+            helpParams: {
+                search: "la búsqueda"
+            }
+        },
         execute: function (params, then) {
             findAndSendImages(params, then, function (images) { return images })
         }
     },
+    help: {
+        help: {
+            description: "muestra esta ayuda"
+        },
+        private: true,
+        execute: function (_params, then) {
+            var helpText = this.useMode + "\n"
+            for (var name in commands) {
+                var command = commands[name]
+                var help = command.help
+                var description = ""
+                var params = ""
+                if (help && help.description) {
+                    description = help.description
+                }
+                if (help && help.params) for (var paramIndex in help.params) {
+                    var param = help.params[paramIndex]
+                    params += this.formatParam(param, help.helpParams[param])
+                }
+                helpText += this.formatHelp(name, description, params, command)
+            }
+            then(reply(true, helpText))
+        },
+        configure: function (useMode, formatHelp, formatParam) {
+            this.useMode = useMode
+            this.formatHelp = formatHelp
+            this.formatParam = formatParam
+        }
+    },
     hola: {
+        help: {
+            description: "te devuelve el saludo cuando llegás."
+        },
         execute: function (params, then) {
             then(reply(true, "Hola che!"))
         }
     },
     names: {
+        help: {
+            description: "devuelve todos los nombres que se pueden usar."
+        },
         execute: function (params, then) {
             then(reply(true, "Me banco a " + fn.availableNames().join(', '), null))
         }
     },
     searchAndCombine: {
+        help: {
+            description: "busca imágenes y combina una con las caras que encuentre.",
+            params: ["guys", "search"],
+            helpParams: {
+                guys: "las caras a usar unidas por '&'. \"all\" usa todas mezcladas, \"random\" una aleatoria (opcional: por omisión \"all\")",
+                search: "la búsqueda"
+            }
+        },
         execute: function (params, then) {
             if (params.length < 1) {
                 then(reply(false, "parametros insuficientes", null))
@@ -164,6 +236,9 @@ commands = {
 }
 // aliases
 commands.face = {
+    help: {
+        description: "alias de searchAndCombine"
+    },
     execute: commands.searchAndCombine.execute
 }
 
