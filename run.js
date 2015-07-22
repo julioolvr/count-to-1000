@@ -10,7 +10,7 @@ commands.resetBot = {
         if (params.length < 1) {
             then({ success: false, text: "Falta contraseña" })
         }
-        else if (params[0].trim() == pbotConfig.adminPassword) {
+        else if (params[0].trim() === pbotConfig.adminPassword) {
             resetWhenIdle = true
             then({ success: true, text: "Reset programado :)" })
         }
@@ -75,7 +75,7 @@ function connectWebSocket(url) {
           command.execute(commandArgs, function (response, more) {
             var end = function () {
               if (!more) activeCommands--
-              if (resetWhenIdle && activeCommands == 0) {
+              if (resetWhenIdle && activeCommands === 0) {
                 ws.close()
               }
             }
