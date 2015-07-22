@@ -1,9 +1,18 @@
 #! /usr/bin/env node
 
 var commands = require('./commands.js')
+
+commands.help.configure("uso command [param1] [param2] ...", function (commandName, description, params, command) {
+    return "" + commandName + ": " + description + "\n" + params + "\n"
+}, function (paramName, description) {
+    return "    " + paramName + " " + description + "\n"
+})
+
 var args = process.argv
 if (args.length < 3) {
-    console.log("ningún comando. Comandos válidos: " + Object.keys(commands).join(", "))
+    commands.help.execute([], function(response) {
+        console.log("ningún comando. Comandos válidos:\n" + response.text)
+    })
 }
 else {
     var commandName = args[2]
