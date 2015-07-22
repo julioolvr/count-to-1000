@@ -2,6 +2,23 @@ var Slack = require('node-slack-upload');
 fs = require('fs');
 var commands = require("./commands.js")
 
+var activeCommands = 0
+var resetWhenIdle = false
+commands.resetBot = {
+    execute: function(params, then) {
+        if (params.length < 1) {
+            then({ success: false, text: "Falta contraseña" })
+        }
+        else if (params[0].trim() == pbotConfig.adminPassword) {
+            resetWhenIdle = true
+            then({ success: true, text: "Reset programado :)" })
+        }
+        else {
+            then({ success: false, text: "Password inválida" })
+        }
+    }
+}
+
 var pbotConfig = JSON.parse(fs.readFileSync('./pbot.json', 'utf8'));
 
 var WebSocket = require('ws'),
@@ -53,7 +70,14 @@ function connectWebSocket(url) {
         }
         if (command) {
           sendStartTyping(ws, message)
-          command.execute(commandArgs, function (response) {
+          activeCommands++
+          command.execute(commandArgs, function (response, more) {
+            var end = function () {
+              if (!more) activeCommands--
+              if (resetWhenIdle && activeCommands == 0) {
+                ws.close()
+              }
+            }
             var text = "@bot: " + (response.text || "")
             if (response.attachment) {
               uploadAttachment(response.attachment, function (attachment) {
@@ -64,10 +88,15 @@ function connectWebSocket(url) {
                   text += " " + attachment.url
                 }
                 sendMessage(ws, message, text)
+                end()
               })
             }
             else if (response.text) {
               sendMessage(ws, message, text)
+              end()
+            }
+            else {
+              end()
             }
           })
         }

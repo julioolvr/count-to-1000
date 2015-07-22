@@ -32,8 +32,10 @@ function findAndSendImages(params, then, filtering) {
     else {
         var searching = params[0];
         fn.findImages(searching, function(images) {
-            filtering(images).forEach(function(image) {
-                then(reply(true, null, image.url))
+            images = filtering(images)
+            var i = 0
+            images.forEach(function(image) {
+                then(reply(true, null, image.url), ++i == images.length)
             })
         })
     }
