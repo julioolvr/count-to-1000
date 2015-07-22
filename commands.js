@@ -35,7 +35,7 @@ function findAndSendImages(params, then, filtering) {
             images = filtering(images)
             var i = 0
             images.forEach(function(image) {
-                then(reply(true, null, image.url), ++i == images.length)
+                then(reply(true, null, image.url), ++i != images.length)
             })
         })
     }
@@ -73,7 +73,7 @@ commands = {
     },
     chau: {
         execute: function (params, then) {
-            then(reply(success, "Chau che!"))
+            then(reply(true, "Chau che!"))
         }
     },
     combine: {
@@ -120,7 +120,7 @@ commands = {
     },
     hola: {
         execute: function (params, then) {
-            then(reply(success, "Hola che!"))
+            then(reply(true, "Hola che!"))
         }
     },
     names: {

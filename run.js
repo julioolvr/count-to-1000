@@ -5,6 +5,7 @@ var commands = require("./commands.js")
 var activeCommands = 0
 var resetWhenIdle = false
 commands.resetBot = {
+    private: true,
     execute: function(params, then) {
         if (params.length < 1) {
             then({ success: false, text: "Falta contraseña" })
@@ -68,7 +69,7 @@ function connectWebSocket(url) {
           // command (?)
           command = commands[message.text.trim().replace(/\?/,'')]
         }
-        if (command) {
+        if (command && availableForChannel(command, message.channel)) {
           sendStartTyping(ws, message)
           activeCommands++
           command.execute(commandArgs, function (response, more) {
@@ -139,6 +140,10 @@ function isFaceUpload(message) {
 var _nextId = 1
 function nextId() {
 	return _nextId++
+}
+
+function availableForChannel(command, channel) {
+    return !command.private || channel.substring(0, 1) === "D"
 }
 
 function sendStartTyping(ws, message) {
