@@ -4,6 +4,7 @@ var fs = require('fs');
 var http = require('http');
 var https = require('https');
 imageClient = require('google-images');
+var nodeImages = require("images")
 
 var htmlEntities = {
     '&amp;': '&',
@@ -22,6 +23,22 @@ var names = null
 var faces = null
 
 fn = {
+    addFace: function(guyName, url, then) {
+        console.log("uploading guyName: " + guyName)
+        var extension = url.lastIndexOf('.') != -1 ? url.substring(url.lastIndexOf('.')) : ".png"
+        var fileName = baseFacesPath + "/" + guyName + extension
+        var image = fn.downloadImage(url, fileName, function() {
+            try {
+                var im = nodeImages(fileName)
+                then(true)
+            }
+            catch (e) {
+                fn.deleteFile(fileName)
+                then(false)
+            }
+            names = null
+        })
+    },
     anyFaceForGuy: function (guy) {
         return fn.pickRandom(faces[guy])
     },
