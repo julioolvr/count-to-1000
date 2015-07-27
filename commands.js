@@ -127,10 +127,10 @@ commands = {
                 return
             }
             if (params.length < 2) {
-                params = params.concat(params)
+                params = ["all"].concat(params)
             }
             if (params.length < 3) {
-                params = ["all"].concat(params)
+                params.push(params[1])
             }
             var guys = fn.parseGuys(params[0])
             var imageName = params[1]
