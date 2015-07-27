@@ -50,6 +50,31 @@ function reply(success, text, attachment) {
 }
 
 commands = {
+    addFace: {
+        private: true,
+        help: {
+            description: "agrega una cara",
+            params: ["guyName", "url"],
+            helpParams: {
+                "guyName": "el nombre. Hasta el '.' es el alias, el resto variante.",
+                "url": "la url de la cara (png)"
+            }
+        },
+        execute: function (params, then) {
+            if (params < 2) {
+                then(reply(false, "parámetros insuficientes"))
+                return
+            }
+            fn.addFace(params[0], params[1], function (ok) {
+                if (ok) {
+                    then(reply(true, "Ya podes usar la cara de " + params[0]))
+                }
+                else {
+                    then(reply(false, "No se pudo subir la cara de " + params[0]))
+                }
+            })
+        }
+    },
     caras: {
         help: {
             description: "devuelve una imagen con todas las caras."
@@ -85,11 +110,11 @@ commands = {
     combine: {
         help: {
             description: "combina una url con las caras que encuentre.",
-            params: ["guys", "url", "imageName"],
+            params: ["guys", "imageName", "url"],
             helpParams: {
                 guys: "las caras a usar unidas por '&'. \"all\" usa todas mezcladas, \"random\" una aleatoria (opcional: por omisión \"all\")",
-                url: "la url de la imagen a usar",
-                imageName: "el nombre de la imagen (opcional: por omisión la url)"
+                imageName: "el nombre de la imagen (opcional: por omisión la url)",
+                url: "la url de la imagen a usar"
             }
         },
         execute: function (params, then) {
@@ -99,11 +124,14 @@ commands = {
                 return
             }
             if (params.length < 2) {
+                params = params.concat(params)
+            }
+            if (params.length < 3) {
                 params = ["all"].concat(params)
             }
             var guys = fn.parseGuys(params[0])
-            var imageUrl = fn.parseUrl(params[1])
-            var imageName = params[(params.length > 2) ? 2 : 1]
+            var imageName = params[1]
+            var imageUrl = fn.parseUrl(params[2])
             var localFile = fn.computeTemporaryImageFileName(imageUrl)
             fn.downloadImage(imageUrl, localFile, function(success) {
                 if (success) {
@@ -149,12 +177,16 @@ commands = {
     },
     help: {
         help: {
-            description: "muestra esta ayuda"
+            description: "muestra esta ayuda",
+            params: ["command"],
+            helpParams: {
+                "command": "el comando que se quiere conocer (opcional)"
+            }
         },
         private: true,
         execute: function (_params, then) {
             var helpText = this.useMode + "\n"
-            for (var name in commands) {
+            var format = function (name) {
                 var command = commands[name]
                 var help = command.help
                 var description = ""
@@ -167,6 +199,14 @@ commands = {
                     params += this.formatParam(param, help.helpParams[param])
                 }
                 helpText += this.formatHelp(name, description, params, command)
+            }.bind(this)
+            if (_params.length < 1 || !commands[_params[0]]) {
+                for (var name in commands) {
+                    format(name)
+                }
+            }
+            else {
+                format(_params[0])
             }
             then(reply(true, helpText))
         },
@@ -219,7 +259,7 @@ commands = {
                         then(reply(false, "no hay caras para " + imageName, null))
                     }
                     else {
-                        commands.combine.execute([guys, images[i].url, imageName], function (response) {
+                        commands.combine.execute([guys, imageName, images[i].url], function (response) {
                             if (response.success) {
                                 then(response)
                             }

@@ -70,23 +70,29 @@ function connectWebSocket(url) {
       //    controller.uploadFace(message, ws)
       //}
 
+      var command = null
+      var commandArgs = []
+      var args, commandName
       if (message.type === 'message') {
-
+        var text = message.text
+        if ("file_share" === message.subtype) {
+            text = message.file.title
+            text += (text.indexOf(":") != -1 ? "+" : ":") + message.file.url_download
+        }
         // command : param 
-        var args = /(\w*)\s*\:(.*)/.exec(message.text)
-        var command = null
-        var commandArgs = []
+        args = /(\w*)\s*\:(.*)/.exec(text)
         if (args) {
           console.log("ARGS -> " + args)
-          var commandName = args[1].trim()
+          commandName = args[1].trim()
           commandArgs = fn.splitSlackParams(args[2])
           command = commands[commandName]
         }
-        else if (message.text) {
+        else if (text) {
           // command (?)
-          command = commands[message.text.trim().replace(/\?/,'')]
+          command = commands[text.trim().replace(/\?/,'')]
         }
-        if (command && availableForChannel(command, message.channel)) {
+      }
+      if (command && availableForChannel(command, message.channel)) {
           sendStartTyping(ws, message)
           activeCommands++
           command.execute(commandArgs, function (response, more) {
@@ -117,7 +123,6 @@ function connectWebSocket(url) {
               end()
             }
           })
-        }
       }    
   });
 }
