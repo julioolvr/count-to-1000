@@ -8,9 +8,3 @@ before_install:
 - sudo apt-get update
 - sudo apt-get install --force-yes libcv-dev libcvaux-dev libhighgui-dev libopencv-dev
 
-deploy:
-  provider: openshift
-  user: "javier@scvsoft.com"
-  password: $OPENSHIFT_PASSWD
-  domain: "crystalship"
-  app: photobot
