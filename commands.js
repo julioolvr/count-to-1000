@@ -37,19 +37,26 @@ function findAndSendImages(params, then, filtering) {
             if (images.length === 0) {
                 then(reply(false, "no hay imágenes para " + searching))
             }
-            else images.forEach(function(image) {
-                then(reply(true, null, image.url), ++i != images.length)
-            })
+            else {
+                then(reply(true, null, images.map(function (image) { return { file: image.url, text: searching } })))
+            }
         })
     }
 }
 
-function reply(success, text, attachment) {
+function reply(success, text, attachments) {
     return {
         success: success,
         text: text,
-        attachment: attachment
+        attachments: attachments ? [].concat(attachments) : null
     }
+}
+
+function replyAttachment(text, file) {
+    return reply(true, null, [{
+        file: file,
+        text: text
+    }])
 }
 
 commands = {
@@ -99,7 +106,7 @@ commands = {
             var name = "./tmp/" + uuid.v4() + ".png"
             image.save(name)
 
-            then(reply(true, 'Caras: {link}', name));
+            then(replyAttachment('Caras: {link}', name));
         }
     },
     chau: {
@@ -141,7 +148,7 @@ commands = {
                     fn.detectFaces(localFile, function (faces) {
                         processFaces(guys, localFile, faces, function(outputFileName, usedGuys) {
                             fn.deleteFile(localFile)
-                            then(reply(true, usedGuys.join(", ") + " en " + imageName, outputFileName))
+                            then(replyAttachment(usedGuys.join(", ") + " en " + imageName, outputFileName))
                         })
                     }, function () {
                         fn.deleteFile(localFile)
