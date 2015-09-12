@@ -1,9 +1,9 @@
-var Slack = require('node-slack-upload');
-fs = require('fs');
+var fs = require('fs')
 var commands = require("./commands.js")
-
+var path = require('path')
 var activeCommands = 0
 var resetWhenIdle = false
+var SlackUpload = require('node-slack-upload');
 commands.resetBot = {
     private: true,
     help: {
@@ -43,8 +43,6 @@ var WebSocket = require('ws'),
     apiToken = process.env.PBOT_APITOKEN || pbotConfig.apiToken,
     authUrl = "https://slack.com/api/rtm.start?token=" + apiToken,
     request = require("request");
-
-var slack = new Slack(apiToken);
 
 request(authUrl, function(err, response, body) {
   if (!err && response.statusCode === 200) {
@@ -95,29 +93,27 @@ function connectWebSocket(url) {
       if (command && availableForChannel(command, message.channel)) {
           sendStartTyping(ws, message)
           activeCommands++
-          command.execute(commandArgs, function (response, more) {
+          command.execute(commandArgs, function (response) {
             var end = function () {
-              if (!more) activeCommands--
+              if (response.text) {
+                sendMessage(ws, message.channel, text)
+              }
+              activeCommands--
               if (resetWhenIdle && activeCommands === 0) {
                 ws.close()
               }
             }
             var text = "@bot: " + (response.text || "")
-            if (response.attachment) {
-              uploadAttachment(response.attachment, function (attachment) {
-                if (text.indexOf("{link}") >= 0) {
-                  text = text.replace("{link}", attachment.url)
+            if (response.attachments && response.attachments.length > 0) {
+              var upload = function (i) {
+                if (i === response.attachments.length) {
+                  end()
                 }
-                else {
-                  text += " " + attachment.url
-                }
-                sendMessage(ws, message, text)
-                end()
-              })
-            }
-            else if (response.text) {
-              sendMessage(ws, message, text)
-              end()
+                else uploadAttachment(ws, response.attachments[i], message.channel, function () {
+                  upload(i + 1)
+                })
+              }
+              upload(0)
             }
             else {
               end()
@@ -127,17 +123,35 @@ function connectWebSocket(url) {
   });
 }
 
-function uploadAttachment(outputFileName, then) {
-    console.log("Uploading new image " + outputFileName + " ...");
+function uploadAttachment(ws, attachment, channelId, then) {
+    console.log("Uploading new image " + attachment.file + " ...");
     var url
-    if (outputFileName.indexOf("http") === 0) {
-        url = outputFileName
+    if (attachment.file.indexOf("http") === 0) {
+        url = attachment.file
+    }
+    else if (pbotConfig.upload) {
+        uploadFile(attachment.file, attachment.text, channelId, then)
     }
     else {
-        var fileName = outputFileName.substring(outputFileName.lastIndexOf('/') + 1)
-        url = pbotConfig.attachmentBaseUrl + fileName
+        var fileName = attachment.file.substring(attachment.file.lastIndexOf('/') + 1)
+        url = pbotConfig.attachmentBaseUrl + attachment.file
+        sendMessage(ws, channelId, attachment.text)
     }
-    then({ url: url })
+    if (url) {
+        sendMessage(ws, channelId, attachment.text + ": " + url)
+        then()
+    }
+}
+
+function uploadFile(fileName, text, channelId, then) {
+  var slackUpload = new SlackUpload(apiToken)
+  slackUpload.uploadFile({
+    file: fs.createReadStream(fileName),
+    title: text,
+    channels: channelId
+  }, function (err) {
+    console.log("done! ", err);
+  });
 }
 
 var uploadRegExp = /^uploadFace\:.*/
@@ -177,13 +191,12 @@ function sendStartTyping(ws, message) {
     }));
 }
 
- function sendMessage(ws, message, text) {
+ function sendMessage(ws, channelId, text) {
     ws.send(JSON.stringify({ 
-        channel: message.channel, 
+        channel: channelId,
         id: nextId(),
         text: text,
-        type: "message",
-        reply_to : message.id
+        type: "message"
     }));
  }
 
