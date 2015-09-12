@@ -1,0 +1,5 @@
+{
+  "node" : true,
+  "predef": [ "MY_GLOBAL" ],
+  "asi" : true
+}
