@@ -37,7 +37,7 @@ commands.help.configure("uso command:[param1]+[param2]+...", function (commandNa
     return "        `" + paramName + "` " + description + "\n"
 })
 
-var pbotConfig = JSON.parse(fs.readFileSync('./pbot.json', 'utf8'));
+var pbotConfig = JSON.parse(fs.readFileSync(__dirname + './pbot.json', 'utf8'));
 
 var WebSocket = require('ws'),
     apiToken = process.env.PBOT_APITOKEN || pbotConfig.apiToken,
