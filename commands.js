@@ -90,7 +90,7 @@ commands = {
             description: "devuelve una imagen con todas las caras."
         },
         execute: function (params, then) {
-            var faces = fs.readdirSync(__dirname + '/faces').map(function (i) { return nodeImages(__dirname + './faces/' + i) })
+            var faces = fs.readdirSync(__dirname + '/faces').map(function (i) { return nodeImages(__dirname + '/faces/' + i) })
             faces.forEach(function(f) { f.resize(80) })
 
             var height = faces.reduce(function(acc, i) { return acc > i.height() ? acc : i.height() }, 0)
@@ -103,7 +103,7 @@ commands = {
                 x += face.width()
             })
 
-            var name = "./tmp/" + uuid.v4() + ".png"
+            var name = __dirname + "/tmp/" + uuid.v4() + ".png"
             image.save(name)
 
             then(replyAttachment('Caras: {link}', name));

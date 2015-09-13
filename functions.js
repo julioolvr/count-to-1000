@@ -14,7 +14,7 @@ var htmlEntities = {
     '&#39;': "'"
 }
 
-var baseFacesPath = "./faces"
+var baseFacesPath = __dirname + "/faces"
 function availableFaceFiles() {
     return fs.readdirSync(baseFacesPath)
 }
@@ -66,7 +66,7 @@ fn = {
     },
     computeTemporaryImageFileName: function(originalUrl) {
         var fileExtension = originalUrl.substring(originalUrl.lastIndexOf('.') + 1);
-        return "./tmp/" + uuid.v4() + "." + (fileExtension.length > 4 ? "tmp" : fileExtension);
+        return __dirname + "/tmp/" + uuid.v4() + "." + (fileExtension.length > 4 ? "tmp" : fileExtension);
     },
     deleteFile: function(fileName) {
         fs.unlinkSync(fileName)
