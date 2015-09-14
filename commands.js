@@ -1,5 +1,6 @@
 var fn = require('./functions.js')
 var nodeImages = require("images");
+var fs = require('fs');
 var uuid = require('node-uuid')
 
 function processFaces(guys, fileName, faces, andThen) {
