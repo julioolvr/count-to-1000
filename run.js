@@ -4,6 +4,7 @@ var path = require('path')
 var activeCommands = 0
 var resetWhenIdle = false
 var SlackUpload = require('node-slack-upload');
+// Slack only commands
 commands.resetBot = {
     private: true,
     help: {
@@ -24,6 +25,100 @@ commands.resetBot = {
         else {
             then({ success: false, text: "Password inválida" })
         }
+    }
+}
+var deleteFile = function(fileId, then) {
+    var params = "&file=" + fileId;
+    var deleteEndpoint = "https://slack.com/api/files.delete?token=" + apiToken + params;
+    console.log ("deleting file ", fileId)
+    request.post(deleteEndpoint, function (err, response, body) {
+        then();
+    });
+};
+commands.purgeFiles = {
+    private: true,
+    help: {
+        description: "borra los archivos subidos no compartidos o con reaction :x:."
+    },
+    execute: function(params, then) {
+        var files = [];
+        var fail = function (error) {
+            then({ success: false, text: "Ocurrió un error: " + error });
+        };
+        var hasReaction = function(reactionsList, reactionName) {
+            for (var i in reactionsList) {
+                if (reactionsList[i].name === reactionName) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        var purge = function () {
+            if (files.length > 0) {
+                var file = files[0];
+                var shared = file.channels.length > 0 || file.groups.length > 0 || file.ims.length > 0;
+                var markedWithReaction = hasReaction(file.reactions, "x");
+                var shouldDelete = !shared || markedWithReaction;
+                if (shouldDelete) {
+                    deleteFile(file.id, function () {
+                        files = files.slice(1);
+                        purge();
+                    });
+                }
+                else {
+                    files = files.slice(1);
+                    purge();
+                }
+            }
+            else {
+                then({ success: true, text: "Archivos purgados." });
+            }
+        };
+        var getFiles = function(userId, pageNumber, then) {
+            var params = "&page=" + pageNumber + "&user=" + userId;
+            var endpoint = "https://slack.com/api/files.list?token=" + apiToken + params;
+            request.get(endpoint, function (err, response, body) {
+                if (err) {
+                    return then(err);
+                }
+                if (response.statusCode >= 300) {
+                    return then(response);
+                }
+                body = JSON.parse(body);
+                if (!body.ok) {
+                    return then(body.error);
+                }
+                then(null, body, userId);
+            });
+        };
+        var processFiles = function (error, body, userId) {
+            if (body && body.ok) {
+                files = files.concat(body.files);
+                if (body.paging.page < body.paging.pages) {
+                    getFiles(userId, body.paging.page + 1, processFiles);
+                }
+                else {
+                    console.log("starting to delete files (", files.length, " total)");
+                    purge();
+                }
+            }
+            else {
+                fail(error);
+            }
+        };
+        request.get("https://slack.com/api/auth.test?token=" + apiToken, function (err, response, body) {
+            if (err) {
+                return fail(err);
+            }
+            if (response.statusCode >= 300) {
+                return fail(response);
+            }
+            body = JSON.parse(body);
+            if (!body.ok) {
+                return fail(body.error);
+            }
+            getFiles(body.user_id, 1, processFiles);
+        });
     }
 }
 
@@ -90,6 +185,10 @@ function connectWebSocket(url) {
           command = commands[text.trim().replace(/\?/,'')]
         }
       }
+      if (message.type === 'reaction_added' && message.reaction === 'x' && message.item.type === 'file') {
+          var fileId = message.item.file;
+          deleteFile(fileId, function() {});
+      }
       if (command && availableForChannel(command, message.channel)) {
           sendStartTyping(ws, message)
           activeCommands++
@@ -119,7 +218,7 @@ function connectWebSocket(url) {
               end()
             }
           })
-      }    
+      }
   });
 }
 
@@ -160,18 +259,6 @@ function isFaceUpload(message) {
   return (message.type === "file_created" ||
           message.type === "file_shared" ) && message.file.title.match(uploadRegExp)
 }
-
-/* Not migrated yet
-  this.uploadFace = function(message, ws) {
-    var guyName = message.file.title.substring(message.file.title.indexOf(':') + 1)
-    console.log("uploading guyName: " + guyName)
-
-    var extension = message.file.permalink_public.substring(message.file.permalink_public.lastIndexOf('.') + 1)
-    var image = downloadImage(message.file.permalink_public, "./faces/" + guyName + extension, function() {
-      sendDirectMessage(ws, message.file.user, "@bot: Gracias capo ! Ya podes usar la cara de " + guyName)
-    })
-  }
-*/
 
 var _nextId = 1
 function nextId() {
