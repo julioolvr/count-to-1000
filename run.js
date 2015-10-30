@@ -35,6 +35,14 @@ var deleteFile = function(fileId, then) {
         then();
     });
 };
+var deleteMessage = function(timestamp, channelId, then) {
+    var params = "&channel=" + channelId + "&ts=" + timestamp;
+    var deleteEndpoint = "https://slack.com/api/chat.delete?token=" + apiToken + params;
+    console.log ("deleting message ", timestamp, " from channel ", channelId);
+    request.post(deleteEndpoint, function (err, response, body) {
+        then();
+    });
+};
 commands.purgeFiles = {
     private: true,
     help: {
@@ -185,9 +193,13 @@ function connectWebSocket(url) {
           command = commands[text.trim().replace(/\?/,'')]
         }
       }
-      if (message.type === 'reaction_added' && message.reaction === 'x' && message.item.type === 'file') {
-          var fileId = message.item.file;
-          deleteFile(fileId, function() {});
+      if (message.type === 'reaction_added' && message.reaction === 'x') {
+          if (message.item.type === 'file') {
+              deleteFile(message.item.file, function() {});
+          }
+          else if (message.item.type === 'message') {
+              deleteMessage(message.item.ts, message.item.channel, function() {});
+          }
       }
       if (command && availableForChannel(command, message.channel)) {
           sendStartTyping(ws, message)
