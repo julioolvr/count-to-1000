@@ -2,6 +2,8 @@ var fn = require('./functions.js')
 var nodeImages = require("images");
 var fs = require('fs');
 var uuid = require('node-uuid')
+var Canvas = require('canvas')
+var Image = Canvas.Image
 
 function processFaces(guys, fileName, faces, andThen) {
     var ima = nodeImages(fileName);
@@ -34,7 +36,6 @@ function findAndSendImages(params, then, filtering) {
         var searching = params[0];
         fn.findImages(searching, function(images) {
             images = filtering(images)
-            var i = 0
             if (images.length === 0) {
                 then(reply(false, "no hay imágenes para " + searching))
             }
@@ -60,7 +61,7 @@ function replyAttachment(text, file) {
     }])
 }
 
-commands = {
+var commands = {
     addFace: {
         private: true,
         help: {
@@ -284,13 +285,146 @@ commands = {
             })
         }
     },
+    searchAndCombineWithText: {
+        help: {
+            description: "busca imágenes, combina una con las caras que encuentre y agrega texto.",
+            params: ["guys", "search"],
+            helpParams: {
+                guys: "las caras a usar unidas por '&'. \"all\" usa todas mezcladas, \"random\" una aleatoria (opcional: por omisión \"all\")",
+                search: "la búsqueda"
+            }
+        },
+        execute: function (params, then) {
+            if (params.length < 1) {
+                then(reply(false, "parametros insuficientes", null))
+                return
+            }
+            var guys = []
+            var search = ""
+            var position = "bottom"
+            var text = ""
+            if (params.length == 1) {
+                guys = fn.parseGuys("all")
+                search = params[0]
+            }
+            if (params.length == 2) {
+                guys = fn.parseGuys(params[0])
+                search = params[1]
+                if (guys.length === 0) {
+                    guys = fn.parseGuys("all")
+                    search = params[0]
+                    text = params[1]
+                }
+            }
+            if (params.length >= 3) {
+                guys = fn.parseGuys(params[0])
+                search = params[1]
+                if (params.length == 3) {
+                    text = params[2]
+                }
+                else {
+                    position = params[2]
+                    text = params[3]
+                }
+            }
+            var combineParams = [guys, search]
+            var combine = search.indexOf("http") === 0 ? commands.combine : commands.searchAndCombine
+            combine.execute(combineParams, function (combineResponse) {
+                if (combineResponse.success && text !== "") {
+                    var textParams = [position, text, combineResponse.attachments[0].file]
+                    commands.text.execute(textParams, function (response) {
+                        then(response)
+                        fn.deleteFile(combineResponse.attachments[0].file)
+                    })
+                }
+                else {
+                    then(combineResponse)
+                }
+            })
+        }
+    },
+    text: {
+        help: {
+            description: "agrega texto a una imagen.",
+            params: ["position", "text", "image"],
+            helpParams: {
+                position: "la posición del text (\"top\" arriba, \"bottom\" abajo) (opcional: por omisión \"bottom\")",
+                text: "el texto a escribir",
+                image: "la url de la imagen a utilizar"
+            }
+        },
+        execute: function (params, then) {
+            if (params.length < 2) {
+                then(reply(false, "parámetros insuficientes"))
+                return
+            }
+            else if (params.length < 3) {
+                params = ["bottom"].concat(params)
+            }
+            var position = params[0]
+            var text = params[1].replace(/\\n/g, "\n")
+            var imageUrl = fn.parseUrl(params[2])
+            var localFile = fn.computeTemporaryImageFileName(imageUrl)
+            var process = function (squid, then) {
+                var img = new Image()
+                img.src = squid
+                var canvas = new Canvas(img.width, img.height)
+                var ctx = canvas.getContext('2d')
+                ctx.drawImage(img, 0, 0, img.width, img.height)
+                var margin = Math.min(img.width, img.height) * 0.05
+                var rect = { top: margin, left: margin, right: img.width - margin, bottom: img.height - margin }
+                if (position == "top") {
+                    rect.bottom = img.height / 2
+                }
+                else if (position == "bottom") {
+                    rect.top = img.height / 2
+                }
+                fn.drawText(ctx, text, 'Helvetica', rect, position)
+                var out = fs.createWriteStream(localFile)
+                var stream = canvas.pngStream()
+                stream.on('data', function(chunk) {
+                    out.write(chunk);
+                })
+                stream.on('end', function() {
+                    then(replyAttachment(text, localFile))
+                })
+            }
+            var processFile = function (fileName, then) {
+                fs.readFile(fileName, function(err, squid) {
+                    if (!err) {
+                        process(squid, then)
+                    }
+                    else {
+                        then(reply(false, "no se pudo abrir la imagen"))
+                    }
+                })
+            }
+            if (imageUrl.indexOf("http") === 0) {
+                var tempFile = fn.computeTemporaryImageFileName(imageUrl)
+                fn.downloadImage(imageUrl, tempFile, function (success, bytes) {
+                    if (success) {
+                        processFile(tempFile, function (response) {
+                            then(response)
+                            fn.deleteFile(tempFile)
+                        })
+                    }
+                    else {
+                        then(reply(false, "no se pudo abrir la imagen"))
+                    }
+                })
+            }
+            else {
+                processFile(imageUrl, then)
+            }
+        }
+    }
 }
 // aliases
 commands.face = {
     help: {
-        description: "alias de searchAndCombine"
+        description: "alias de searchAndCombineWithText"
     },
-    execute: commands.searchAndCombine.execute
+    execute: commands.searchAndCombineWithText.execute
 }
 
 module.exports = commands

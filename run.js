@@ -1,5 +1,6 @@
 var fs = require('fs')
 var commands = require("./commands.js")
+var fn = require("./functions.js")
 var path = require('path')
 var activeCommands = 0
 var resetWhenIdle = false
