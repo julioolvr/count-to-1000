@@ -364,7 +364,7 @@ var commands = {
             var position = params[0]
             var text = params[1].replace(/\\n/g, "\n")
             var imageUrl = fn.parseUrl(params[2])
-            var localFile = fn.computeTemporaryImageFileName(imageUrl)
+            var localFile = fn.computeTemporaryImageFileName("image.jpg")
             var process = function (squid, then) {
                 var img = new Image()
                 img.src = squid
@@ -381,7 +381,7 @@ var commands = {
                 }
                 fn.drawText(ctx, text, 'Helvetica', rect, position)
                 var out = fs.createWriteStream(localFile)
-                var stream = canvas.pngStream()
+                var stream = canvas.jpegStream({ progressive: true })
                 stream.on('data', function(chunk) {
                     out.write(chunk);
                 })
