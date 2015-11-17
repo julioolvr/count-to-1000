@@ -382,11 +382,12 @@ var commands = {
                 fn.drawText(ctx, text, 'Helvetica', rect, position)
                 var out = fs.createWriteStream(localFile)
                 var stream = canvas.jpegStream({ progressive: true })
-                stream.on('data', function(chunk) {
-                    out.write(chunk);
-                })
+                stream.pipe(out);
                 stream.on('end', function() {
-                    then(replyAttachment(text, localFile))
+                    out.end()
+                    setTimeout(function() {
+                        then(replyAttachment(text, localFile))
+                    }, 333)
                 })
             }
             var processFile = function (fileName, then) {
