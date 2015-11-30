@@ -60,6 +60,55 @@ function replyAttachment(text, file) {
     }])
 }
 
+function cualquiera(images) {
+    return [images[Math.floor(Math.random()*images.length)]]
+}
+
+function mergearVersusURL(unaURL, otraURL, then) {
+    console.log("Merging " + JSON.stringify(unaURL) + " with " + JSON.stringify(otraURL))
+    var localFile = fn.computeTemporaryImageFileName(unaURL)
+    fn.downloadImage(unaURL, localFile, function(success) {
+        if (success) {
+            var otraLocalFile = fn.computeTemporaryImageFileName(otraURL)
+            fn.downloadImage(otraURL, otraLocalFile, function(success) {
+                if (success) {
+                    mergearVersus(localFile, otraLocalFile, then)
+                }
+                else {
+                  then(reply(false, unaURL + " no es una url válida", null))
+                }
+            })
+        }
+        else {
+          then(reply(false, unaURL + " no es una url válida", null))
+        }
+    })
+}
+
+function mergearVersus(localFile, otraLocalFile, then) {
+    var primera = nodeImages(localFile);
+    var segunda = nodeImages(otraLocalFile);
+
+    var minWidth = Math.min(primera.width(), segunda.width())
+    primera.resize(minWidth)
+    segunda.resize(minWidth)
+
+    var newWidth = primera.width() + segunda.width()
+    var newHeight = Math.max(primera.height(), segunda.height());
+    
+    console.log("Creating image= " + newWidth + "x" + newHeight)
+    var newImage = nodeImages(newWidth, newHeight)
+
+    newImage.draw(primera, 0, (newHeight - primera.height()) / 2)
+    newImage.draw(segunda, primera.width(), (newHeight - segunda.height()) / 2)
+
+    var name = __dirname + "/tmp/" + uuid.v4() + ".png"
+    if (newImage.width() > 800)
+        newImage.resize(800)
+    newImage.save(name)
+    then(replyAttachment('Versus: ', name));
+}
+
 commands = {
     addFace: {
         private: true,
@@ -106,7 +155,6 @@ commands = {
 
             var name = __dirname + "/tmp/" + uuid.v4() + ".png"
             image.save(name)
-
             then(replyAttachment('Caras: {link}', name));
         }
     },
@@ -162,6 +210,38 @@ commands = {
             })
         }
     },
+    versus: {
+        help: {
+            description: "busca dos imagenes y ensambla una nueva con ambas",
+            params: ["uno", "otro"],
+            helpParams: {
+                uno: "uno",
+                otro: "otro"
+            }
+        },
+        execute: function (params, then) {
+            var uno = params[0];
+            var otro = params[1];
+            fn.findImages(uno, function(primeras) {
+                primeras = cualquiera(primeras)
+                if (primeras.length === 0) {
+                    then(reply(false, "no hay imágenes para " + uno))
+                }
+                else {
+                    fn.findImages(otro, function(segundas) {
+                        segundas = cualquiera(segundas)
+                        if (segundas.length === 0) {
+                            then(reply(false, "no hay imágenes para " + otro))
+                        }
+                        var primera = primeras[0]
+                        var segunda = segundas[0]
+
+                        mergearVersusURL(primera.url, segunda.url, then)
+                    })
+                }
+            })
+        }
+    },
     gimage: {
         help: {
             description: "busca una imagen y la devuelve.",
@@ -171,7 +251,7 @@ commands = {
             }
         },
         execute: function (params, then) {
-            findAndSendImages(params, then, function (images) { return [images[Math.floor(Math.random()*images.length)]] })
+            findAndSendImages(params, then, cualquiera)
         }
     },
     gimages: {
