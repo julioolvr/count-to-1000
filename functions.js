@@ -22,7 +22,7 @@ function availableFaceFiles() {
 var names = null
 var faces = null
 
-fn = {
+var fn = {
     addFace: function(guyName, url, then) {
         console.log("uploading guyName: " + guyName)
         var extension = url.lastIndexOf('.') != -1 ? url.substring(url.lastIndexOf('.')) : ".png"
@@ -93,13 +93,47 @@ fn = {
             }
         })
     },
+    drawText: function(ctx, text, font, rect, position) {
+        var fontSuffix = 'px ' + font
+        var lines = text.split("\n")
+        var fontSize = (rect.bottom - rect.top) / lines.length
+        var maxWidth = rect.right - rect.left
+        console.log ("draw text: ", text, " rect: ", rect, "position: ", position)
+        lines.forEach(function (line) {
+            ctx.font = String(fontSize) + fontSuffix
+            var te = ctx.measureText(line);
+            fontSize = Math.min(Math.floor(maxWidth / te.width * fontSize), fontSize)
+        })
+        ctx.font = String(fontSize) + fontSuffix
+        var x = (rect.right + rect.left) / 2
+        var y = (rect.bottom + rect.top - fontSize * lines.length) / 2
+        if (position == "top") {
+            y = rect.top
+        }
+        else if (position == "bottom") {
+            y = rect.bottom - fontSize * lines.length
+        }
+        ctx.textAlign = 'center'
+        ctx.fillStyle = 'white'
+        ctx.strokeStyle = 'black'
+        ctx.lineWidth = fontSize / 20
+        lines.forEach(function (line, index) {
+            var te = ctx.measureText(line);
+            var textY = y + te.actualBoundingBoxAscent
+            ctx.strokeText(line, x, textY)
+            ctx.fillText(line, x, textY)
+            y += fontSize
+        })
+    },
     downloadImage: function(url, fileName, then) {
         console.log('Downloading ' + url + " to file " + fileName)
         var file = fs.createWriteStream(fileName)
         var client = url.match(/^https.*/) ? https : http
-        var request = client.get(url, function(response) {
+        client.get(url, function(response) {
             response.pipe(file)
-            response.on('end', function () { then(true) })
+            response.on('end', function () {
+                then(true)
+            })
         }).on('error', function () { then(false) })
     },
     findImages: function (searching, command) {
