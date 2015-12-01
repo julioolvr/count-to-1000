@@ -120,30 +120,20 @@ function mergearVersus(textUna, localFile, textOtra, otraLocalFile, then) {
             var img = new Image()
             img.src = squid
             // new canvas + 50 px height for the text below
-            var canvas = new Canvas(img.width, img.height + 50)
+            var margin = img.width / 30.0;
+            var canvas = new Canvas(img.width, img.height)
             var ctx = canvas.getContext('2d')
 
             ctx.drawImage(img, 0, 0, img.width, img.height)
 
             var position = "bottom"
 
-            var halfWidth = img.width / 2
-
             // text on the left
-            //var rect = { left: 50, right: 400-50, top : img.height, bottom: img.height + 40 }
-            // var rect = { left: 400, top : 300, right: 400, bottom: 300 }
-            //fn.drawText(ctx, textUna, 'Helvetica', rect, position)
-
-            ctx.textAlign = 'center'
-            ctx.fillStyle = 'white'
-            ctx.strokeStyle = 'black'
-            ctx.font = '10px Helvetica';
-            ctx.strokeText(textUna, halfWidth*0.1, img.height)
-            ctx.fillText(textUna, halfWidth*0.1, img.height)
-
+            var rect = { left: margin, right: img.width / 2.0 - margin, top : img.height / 3.0 * 2, bottom: img.height }
+            fn.drawText(ctx, textUna, 'Helvetica', rect, position)
             // text on right
-            // var rect = { top: img.height, left: halfWidth * 1.1, right: img.width - (halfWidth * 0.1), bottom: img.height + 50 }
-            // fn.drawText(ctx, textOtra, 'Helvetica', rect, position)
+            rect = { left: img.width / 2.0 + margin, right: img.width - margin, top : img.height / 3.0 * 2, bottom: img.height }
+            fn.drawText(ctx, textOtra, 'Helvetica', rect, position)
 
             fn.sendAsAttach(canvas, textUna + " vs " + textOtra, then)
         }
