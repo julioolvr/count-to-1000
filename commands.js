@@ -54,18 +54,11 @@ function reply(success, text, attachments) {
     }
 }
 
-function replyAttachment(text, file) {
-    return reply(true, null, [{
-        file: file,
-        text: text
-    }])
-}
-
 function cualquiera(images) {
     return [images[Math.floor(Math.random()*images.length)]]
 }
 
-function mergearVersusURL(unaURL, otraURL, then) {
+function mergearVersusURL(textUna, unaURL, textOtra, otraURL, then) {
     console.log("Merging " + JSON.stringify(unaURL) + " with " + JSON.stringify(otraURL))
     var localFile = fn.computeTemporaryImageFileName(unaURL)
     fn.downloadImage(unaURL, localFile, function(success) {
@@ -73,7 +66,12 @@ function mergearVersusURL(unaURL, otraURL, then) {
             var otraLocalFile = fn.computeTemporaryImageFileName(otraURL)
             fn.downloadImage(otraURL, otraLocalFile, function(success) {
                 if (success) {
-                    mergearVersus(localFile, otraLocalFile, then)
+                    try {
+                        mergearVersus(textUna, localFile, textOtra, otraLocalFile, then)
+                    }
+                    catch (err) {
+                        then(reply(false, "Errorciño: " + err, null))      
+                    }
                 }
                 else {
                   then(reply(false, unaURL + " no es una url válida", null))
@@ -86,7 +84,7 @@ function mergearVersusURL(unaURL, otraURL, then) {
     })
 }
 
-function mergearVersus(localFile, otraLocalFile, then) {
+function mergearVersus(textUna, localFile, textOtra, otraLocalFile, then) {
     var primera = nodeImages(localFile);
     var segunda = nodeImages(otraLocalFile);
 
@@ -94,20 +92,65 @@ function mergearVersus(localFile, otraLocalFile, then) {
     primera.resize(minWidth)
     segunda.resize(minWidth)
 
+    // calculate new image size
     var newWidth = primera.width() + segunda.width()
     var newHeight = Math.max(primera.height(), segunda.height());
     
-    console.log("Creating image= " + newWidth + "x" + newHeight)
+    // create and draw images
     var newImage = nodeImages(newWidth, newHeight)
-
     newImage.draw(primera, 0, (newHeight - primera.height()) / 2)
     newImage.draw(segunda, primera.width(), (newHeight - segunda.height()) / 2)
 
+    // resize to avoid a huge file
     var name = __dirname + "/tmp/" + uuid.v4() + ".png"
-    if (newImage.width() > 800)
+    // if (newImage.width() > 800)
         newImage.resize(800)
+
+    // add 'vs'
+    var versusImage = nodeImages(__dirname + "/versus.png")
+    versusImage.resize(newImage.width(), newImage.height())
+    newImage.draw(versusImage, 0, 0)
+
+    // save
     newImage.save(name)
-    then(replyAttachment('Versus: ', name));
+
+    // add text to both sides
+    fs.readFile(name, function(err, squid) {
+        if (!err) {
+            var img = new Image()
+            img.src = squid
+            // new canvas + 50 px height for the text below
+            var canvas = new Canvas(img.width, img.height + 50)
+            var ctx = canvas.getContext('2d')
+
+            ctx.drawImage(img, 0, 0, img.width, img.height)
+
+            var position = "bottom"
+
+            var halfWidth = img.width / 2
+
+            // text on the left
+            //var rect = { left: 50, right: 400-50, top : img.height, bottom: img.height + 40 }
+            // var rect = { left: 400, top : 300, right: 400, bottom: 300 }
+            //fn.drawText(ctx, textUna, 'Helvetica', rect, position)
+
+            ctx.textAlign = 'center'
+            ctx.fillStyle = 'white'
+            ctx.strokeStyle = 'black'
+            ctx.font = '10px Helvetica';
+            ctx.strokeText(textUna, halfWidth*0.1, img.height)
+            ctx.fillText(textUna, halfWidth*0.1, img.height)
+
+            // text on right
+            // var rect = { top: img.height, left: halfWidth * 1.1, right: img.width - (halfWidth * 0.1), bottom: img.height + 50 }
+            // fn.drawText(ctx, textOtra, 'Helvetica', rect, position)
+
+            fn.sendAsAttach(canvas, textUna + " vs " + textOtra, then)
+        }
+        else {
+            then(reply(false, "no se pudo abrir la imagen"))
+        }
+    })
 }
 
 var commands = {
@@ -156,7 +199,7 @@ var commands = {
 
             var name = __dirname + "/tmp/" + uuid.v4() + ".png"
             image.save(name)
-            then(replyAttachment('Caras: {link}', name));
+            then(fn.replyAttachment('Caras: {link}', name));
         }
     },
     chau: {
@@ -198,7 +241,7 @@ var commands = {
                     fn.detectFaces(localFile, function (faces) {
                         processFaces(guys, localFile, faces, function(outputFileName, usedGuys) {
                             fn.deleteFile(localFile)
-                            then(replyAttachment(usedGuys.join(", ") + " en " + imageName, outputFileName))
+                            then(fn.replyAttachment(usedGuys.join(", ") + " en " + imageName, outputFileName))
                         })
                     }, function () {
                         fn.deleteFile(localFile)
@@ -237,7 +280,7 @@ var commands = {
                         var primera = primeras[0]
                         var segunda = segundas[0]
 
-                        mergearVersusURL(primera.url, segunda.url, then)
+                        mergearVersusURL(uno, primera.url, otro, segunda.url, then)
                     })
                 }
             })
@@ -444,7 +487,6 @@ var commands = {
             var position = params[0]
             var text = params[1].replace(/\\n/g, "\n")
             var imageUrl = fn.parseUrl(params[2])
-            var localFile = fn.computeTemporaryImageFileName("image.jpg")
             var process = function (squid, then) {
                 var img = new Image()
                 img.src = squid
@@ -460,15 +502,8 @@ var commands = {
                     rect.top = img.height / 2
                 }
                 fn.drawText(ctx, text, 'Helvetica', rect, position)
-                var out = fs.createWriteStream(localFile)
-                var stream = canvas.jpegStream({ progressive: true })
-                stream.pipe(out);
-                stream.on('end', function() {
-                    out.end()
-                    setTimeout(function() {
-                        then(replyAttachment(text, localFile))
-                    }, 333)
-                })
+                
+                fn.sendAsAttach(canvas, text, then)
             }
             var processFile = function (fileName, then) {
                 fs.readFile(fileName, function(err, squid) {

@@ -186,6 +186,31 @@ var fn = {
     },
     splitSlackParams: function(line) {
         return line.split("+").map(function (arg) { return fn.htmlDecode(arg) })
+    },
+    sendAsAttach: function(canvas, text, then) {
+        var localFile = fn.computeTemporaryImageFileName("image.jpg")
+        var out = fs.createWriteStream(localFile)
+        var stream = canvas.jpegStream({ progressive: true })
+        stream.pipe(out);
+        stream.on('end', function() {
+            out.end()
+            setTimeout(function() {
+                then(fn.replyAttachment(text, localFile))
+            }, 333)
+        })
+    },
+    replyAttachment: function(text, file) {
+        return fn.reply(true, null, [{
+            file: file,
+            text: text
+        }])
+    },
+    reply : function(success, text, attachments) {
+        return {
+            success: success,
+            text: text,
+            attachments: attachments ? [].concat(attachments) : null
+        }
     }
 }
 
